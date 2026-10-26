@@ -1,0 +1,20 @@
+import { z } from 'zod';
+
+export const SCHEMA_VERSION = '1.0.0';
+export const ValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+export const SourceDocumentSchema = z.object({ id:z.string().min(1), text:z.string().max(50000), contentHash:z.string().regex(/^[a-f0-9]{64}$/), createdAt:z.string().datetime(), schemaVersion:z.literal(SCHEMA_VERSION) });
+export const SourceSpanSchema = z.object({ sourceId:z.string().min(1), startOffset:z.number().int().nonnegative(), endOffset:z.number().int().positive(), excerpt:z.string(), verified:z.boolean() }).refine(x=>x.endOffset>x.startOffset,{message:'End offset must exceed start offset'});
+export const ConditionSchema = z.object({ id:z.string().min(1), name:z.string().min(1), valueType:z.enum(['STRING','NUMBER','BOOLEAN']), expectedValue:ValueSchema, observedValue:ValueSchema, sourceSpans:z.array(SourceSpanSchema), freshnessRequirement:z.number().int().positive().nullable().default(null), observedAt:z.string().datetime().nullable().default(null) });
+export const PolicyRuleSchema = z.object({ id:z.string().min(1), description:z.string().min(1), subjectStepId:z.string().min(1), predicate:z.enum(['ALL','ANY']), requiredConditionIds:z.array(z.string().min(1)).min(1), sourceSpans:z.array(SourceSpanSchema), origin:z.enum(['EXPLICIT','INFERRED','USER_CONFIRMED']) });
+export const WorkflowStepSchema = z.object({ id:z.string().min(1), name:z.string().min(1), actionType:z.enum(['CHECK','DEPLOY','MIGRATE','APPROVE','ROLLBACK','NOTIFY']), dependsOn:z.array(z.string().min(1)), executionGateIds:z.array(z.string().min(1)), sourceSpans:z.array(SourceSpanSchema) });
+export const WorkflowSchema = z.object({ schemaVersion:z.literal(SCHEMA_VERSION), id:z.string().min(1), title:z.string().min(1), sourceDocuments:z.array(SourceDocumentSchema), conditions:z.array(ConditionSchema), policyRules:z.array(PolicyRuleSchema), steps:z.array(WorkflowStepSchema) });
+export const InterventionSchema = z.object({ id:z.string().min(1), targetConditionId:z.string().min(1), originalValue:ValueSchema, replacementValue:ValueSchema, reason:z.string().min(1), proposedBy:z.enum(['USER','META_HOSTED','OPEN_WEIGHT']), validated:z.boolean() });
+export const EvaluationStateSchema = z.enum(['SATISFIED','VIOLATED','UNKNOWN','NOT_APPLICABLE']);
+export const OutcomeSchema = z.enum(['SAFE_EXECUTION','SAFE_BLOCK','UNSAFE_EXECUTION','INDETERMINATE','INVALID_SCENARIO']);
+export const EvaluationResultSchema = z.object({ id:z.string(), scenarioId:z.string(), baselineHash:z.string(), interventionHash:z.string(), evaluatorVersion:z.string(), stepResults:z.array(z.object({stepId:z.string(),eligibility:EvaluationStateSchema,executes:z.boolean()})), policyResults:z.array(z.object({ruleId:z.string(),state:EvaluationStateSchema})), executionTrace:z.array(z.object({sequence:z.number(),stepId:z.string(),status:z.enum(['EXECUTED','BLOCKED','UNKNOWN']),reason:z.string()})), affectedNodeIds:z.array(z.string()), firstViolation:z.string().nullable(), unknownConditions:z.array(z.string()), outcome:OutcomeSchema, timestamp:z.string().datetime() });
+export const CounterexampleCertificateSchema = z.object({certificateVersion:z.literal('1'),sourceHash:z.string(),graphHash:z.string(),baseline:EvaluationResultSchema,intervention:InterventionSchema,evaluationResult:EvaluationResultSchema,violatedRules:z.array(z.string()),affectedPath:z.array(z.string()),safeguard:z.object({stepId:z.string(),conditionId:z.string()}).nullable(),verificationResult:EvaluationResultSchema.nullable(),modelMetadata:z.object({provider:z.string(),model:z.string(),requestId:z.string().nullable()}).nullable(),evaluationMetadata:z.object({evaluatorVersion:z.string(),generatedAt:z.string().datetime()}),integrityHash:z.string()});
+export type Workflow=z.infer<typeof WorkflowSchema>;
+export type Intervention=z.infer<typeof InterventionSchema>;
+export type EvaluationResult=z.infer<typeof EvaluationResultSchema>;
+export type EvaluationState=z.infer<typeof EvaluationStateSchema>;
+export type CounterexampleCertificate=z.infer<typeof CounterexampleCertificateSchema>;
