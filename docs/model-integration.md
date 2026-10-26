@@ -6,4 +6,4 @@ Live requests require `MODEL_CALLS_ENABLED=true`, `META_CREDITS_CONFIRMED=true`,
 
 Pricing estimates use the October 26, 2026 Standard Muse Spark rates of $1.25 per million input tokens and $4.25 per million output tokens. They must be reviewed against [Meta pricing](https://dev.meta.ai/docs/pricing-rate-limits) and reconciled with Meta Billing. The ledger is not a provider billing guarantee.
 
-Open-weight inference remains disabled and unclaimed.
+Two live extraction responses passed graph and evidence validation. A live two-turn investigation used the simulator result to select an approval gate and verified `SAFE_BLOCK`. The provider response IDs were observed locally. Open-weight inference remains disabled and unclaimed.

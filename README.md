@@ -29,7 +29,7 @@ Model extraction is accepted only when every cited excerpt matches the submitted
 
 ## Meta status
 
-Live Meta extraction and agent calls are implemented but require a credited `MODEL_API_KEY`, confirmed Standard-mode billing, and live testing. No real Meta response or credit usage is claimed here. Eligible open-weight integration is not available in this milestone.
+Live Meta extraction and the two-turn tool investigation have been tested locally against the credited Standard-mode account. The model called `run_counterfactual`, received a simulator result, then called `propose_safeguard`. The local ledger records estimated or actual API usage; it has not been reconciled against Meta Billing. Eligible open-weight integration is not available in this milestone.
 
 ## Install
 
@@ -41,11 +41,11 @@ Use Node 22 and pnpm 10. Run `pnpm install` in the repository root. Copy `.env.e
 
 ## Security and limitations
 
-Faultline never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Public rate limiting and the complete autonomous multi-tool loop are still under development. Do not enable public live inference until those controls are verified.
+Faultline never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Public rate limiting and the complete multi-tool catalogue are still under development. Do not enable public live inference until those controls are verified.
 
 ## Hackathon contribution
 
-Created for the Meta Global AI Developer Hackathon 2026 by Ekeleme Fortune. Git commit identity and participant status require independent verification before publication. No other contributors are claimed.
+Created for the Meta Global AI Developer Hackathon 2026 by Ekeleme Fortune under the `luch91` GitHub account. Participant status requires independent verification. No other contributors are claimed.
 
 ## License
 
