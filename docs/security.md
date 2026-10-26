@@ -5,3 +5,5 @@ User workflow text is untrusted. The Worker does not execute code from it. Model
 The spending guard reserves estimated usage in a persistent Durable Object before each model call. Operators must reconcile its estimate against Meta Billing. Public deployment should remain disabled until rate limits, credit reconciliation, timeout behavior, and production secret configuration are tested.
 
 Known gaps: the current rate limit covers model calls, not every HTTP route; client-provided session IDs can be rotated; API error responses need more careful classification before public release.
+
+The production dependency audit runs in CI. Vitest currently brings in `tinypool@1.1.1`, which has a critical advisory. This development dependency must be upgraded and the full audit rerun before release.
