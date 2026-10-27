@@ -3,7 +3,7 @@ import api from './index';
 import {missingApproval,missingApprovalIntervention} from '../../../fixtures/workflows/missing-approval';
 import {hash} from '@faultline/simulator';
 
-const ledger:{admit:()=>Promise<{allowed:boolean;reason?:string}>;getAttestation:()=>Promise<unknown>}={admit:async()=>({allowed:true}),getAttestation:async()=>null};
+const ledger:{admit:()=>Promise<{allowed:boolean;reason?:string}>;getAttestation:()=>Promise<unknown>;status:()=>Promise<unknown>}={admit:async()=>({allowed:true}),getAttestation:async()=>null,status:async()=>({conservativeAccountedUsd:0})};
 const env={BUDGET:{getByName:()=>ledger}} as unknown as Parameters<typeof api.fetch>[1];
 async function post(path:string,body:unknown){return api.fetch(new Request(`http://localhost${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),env);}
 describe('deterministic HTTP flow',()=>{
@@ -54,5 +54,11 @@ describe('deterministic HTTP flow',()=>{
     const original=ledger.admit;
     ledger.admit=async()=>({allowed:false,reason:'Request rate limit exceeded'});
     try{const response=await api.fetch(new Request('http://localhost/api/v1/samples'),env);expect(response.status).toBe(429);}finally{ledger.admit=original;}
+  });
+  it('closes the live model switch after its configured expiry',async()=>{
+    const expired={...env,MODEL_API_KEY:'test-only-key',MODEL_CALLS_ENABLED:'true',META_CREDITS_CONFIRMED:'true',META_BILLING_MODE:'Standard',MODEL_CALLS_EXPIRES_AT:'2026-01-01T00:00:00Z'} as Parameters<typeof api.fetch>[1];
+    const response=await api.fetch(new Request('http://localhost/api/v1/budget'),expired);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({liveModelEnabled:false,configuration:{switchEnabled:true,expiresAt:'2026-01-01T00:00:00Z'}});
   });
 });

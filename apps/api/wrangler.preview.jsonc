@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-26",
   "vars": {
     "MODEL_CALLS_ENABLED": "false",
+    "MODEL_CALLS_EXPIRES_AT": "2026-11-05T03:00:00Z",
     "META_CREDITS_CONFIRMED": "false",
     "META_BILLING_MODE": "Standard",
     "ALLOWED_ORIGIN": "https://faultline-web-preview.pages.dev"
