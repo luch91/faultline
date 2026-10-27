@@ -15,6 +15,8 @@ Faultline tests declared deployment policy against the conditions an automated w
 
 The included Missing Approval fixture declares human approval as mandatory but leaves it out of the execution gate. Removing approval produces `UNSAFE_EXECUTION`. Adding the approval gate to a copied graph produces `SAFE_BLOCK`.
 
+The Atlas lists available workflow records and session results. Investigation opens an interactive dependency graph with separate policy and execution links. The same selected entity and scenario carry into the optional 3D Execution Lattice and the replay. Graph View remains available when WebGL is unavailable or 3D runs slowly.
+
 ## Approach
 
 The simulator evaluates policy rules and execution gates independently. Meta Muse Spark is used for evidence-linked workflow extraction and a bounded two-turn investigation when credited Standard-mode access is configured. Model output cannot override simulator results. The frontend lets a user correct observations and gates before simulation.

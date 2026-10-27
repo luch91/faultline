@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { Workflow, EvaluationResult, Intervention } from '@faultline/contracts';
 import { ExecutionHardware, type HardwareKind } from './scene/ExecutionHardware';
@@ -9,7 +9,7 @@ import { visualState, type VisualState } from './scene/visualState';
 
 type Module = { id: string; name: string; x: number; z: number; state: VisualState; kind: HardwareKind };
 type TestedGate = { stepId: string; conditionId: string } | null;
-type Props = { workflow: Workflow; result: EvaluationResult | null; intervention: Intervention | null; selected: string | null; testedGate: TestedGate; onSelect: (id: string) => void; cameraState: CameraState; reducedMotion: boolean; zoom: number };
+type Props = { workflow: Workflow; result: EvaluationResult | null; intervention: Intervention | null; selected: string | null; testedGate: TestedGate; onSelect: (id: string) => void; cameraState: CameraState; reducedMotion: boolean; zoom: number; onSlow?: () => void };
 
 function stateColor(state: VisualState) {
   if (state === 'UNSAFE' || state === 'VIOLATED') return '#f07858';
@@ -47,6 +47,22 @@ function RenderMeter() {
     sample.triangles.push(gl.info.render.triangles);
     if (sample.frames.length > 600) { sample.frames.shift(); sample.drawCalls.shift(); sample.triangles.shift(); }
     invalidate();
+  });
+  return null;
+}
+
+function PerformanceWatch({ onSlow }: { onSlow?: () => void }) {
+  const sample = useRef({ start: 0, frames: 0, reported: false });
+  useFrame(() => {
+    if (!onSlow || sample.current.reported) return;
+    const now = performance.now();
+    if (!sample.current.start) { sample.current.start = now; return; }
+    sample.current.frames += 1;
+    const elapsed = now - sample.current.start;
+    if (elapsed >= 1400 && sample.current.frames >= 10) {
+      sample.current.reported = true;
+      if (sample.current.frames * 1000 / elapsed < 18) onSlow();
+    }
   });
   return null;
 }
@@ -144,7 +160,7 @@ function moduleKind(name: string, actionType?: Workflow['steps'][number]['action
   return actionType ? 'STEP' : 'CONDITION';
 }
 
-export default function SpatialScene({ workflow, result, intervention, selected, testedGate, onSelect, cameraState, reducedMotion, zoom }: Props) {
+export default function SpatialScene({ workflow, result, intervention, selected, testedGate, onSelect, cameraState, reducedMotion, zoom, onSlow }: Props) {
   const [failed, setFailed] = useState(false);
   const modules = useMemo<Module[]>(() => {
     const items = [...workflow.conditions.map(c => ({ id: c.id, name: c.name, actionType: undefined })), ...workflow.steps.map(s => ({ id: s.id, name: s.name, actionType: s.actionType }))];
@@ -155,7 +171,7 @@ export default function SpatialScene({ workflow, result, intervention, selected,
   if (failed) return <WorkflowMap workflow={workflow} result={result} intervention={intervention} selected={selected} testedGate={testedGate} onSelect={onSelect} />;
   const overview = cameraState === 'OVERVIEW' || cameraState === 'RETURN';
   return <div className="spatial-scene" aria-label="Interactive workflow execution lattice" data-camera-state={cameraState}>
-    <Canvas frameloop="demand" camera={{ position: [12, 18, 24], fov: 36, near: .1, far: 200 }} dpr={window.innerWidth > 900 ? .8 : 1} gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => gl.domElement.addEventListener('webglcontextlost', () => setFailed(true))}>
+    <Canvas frameloop="demand" camera={{ position: [12, 18, 24], fov: 36, near: .1, far: 200 }} dpr={Math.min(window.devicePixelRatio || 1, .8)} gl={{ antialias: false, powerPreference: 'high-performance' }} onCreated={({ gl }) => gl.domElement.addEventListener('webglcontextlost', () => setFailed(true))}>
       <color attach="background" args={['#0a1424']} /><fog attach="fog" args={['#0a1424', 32, 85]} />
       <hemisphereLight args={['#9bb8d4', '#0a1421', .72]} />
       <ambientLight intensity={.35} color="#849fbb" />
@@ -164,6 +180,7 @@ export default function SpatialScene({ workflow, result, intervention, selected,
       <pointLight position={[1, 3, -2]} intensity={4.5} distance={12} color="#578fbc" />
       <CameraDirector state={cameraState} selected={selected} modules={modules} reducedMotion={reducedMotion} zoom={zoom} />
       <RenderMeter />
+      <PerformanceWatch onSlow={onSlow} />
       <Installation modules={modules} workflow={workflow} selected={selected} testedGate={testedGate} onSelect={onSelect} overview={overview} />
     </Canvas>
   </div>;

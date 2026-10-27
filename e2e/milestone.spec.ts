@@ -2,17 +2,32 @@ import { test, expect } from '@playwright/test';
 import { missingApproval } from '../fixtures/workflows/missing-approval';
 import { evaluate } from '../packages/simulator/src';
 
+test.beforeEach(async ({ page }) => {
+  const testClient = `browser-test-${crypto.randomUUID()}`;
+  await page.route('**/api/v1/**', route => route.continue({ headers: { ...route.request().headers(), 'CF-Connecting-IP': testClient } }));
+});
+
 test('Missing Approval journey', async ({ page }) => {
   const baselineResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/experiments/run') && response.request().postData()?.includes('"intervention"') === false);
   await page.goto('/');
   const baseline = await baselineResponse;
   expect(baseline.status()).toBe(200);
   expect(await baseline.json()).toMatchObject({ kind: 'BASELINE', result: { outcome: 'SAFE_EXECUTION' } });
+  await expect(page.getByRole('main', { name: 'Faultline Atlas' })).toBeVisible();
+  await expect(page.locator('.atlas-directory-item')).toHaveCount(1);
+  await page.screenshot({ path: `test-results/atlas-${test.info().project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Open investigation' }).click();
   await expect(page.getByRole('heading', { name: 'The Missing Approval' })).toBeVisible();
-  await expect(page.getByText('Deployment requires passing tests, human approval, and migration compatibility')).toBeVisible();
+  await expect(page.locator('.policy-entry').getByText('Deployment requires passing tests, human approval, and migration compatibility')).toBeVisible();
   await expect(page.locator('.condition-row').filter({ hasText: 'Automated tests pass' })).toBeVisible();
   await expect(page.locator('.condition-row').filter({ hasText: 'Migration compatible' })).toBeVisible();
   await expect(page.locator('.gate-row').getByLabel('Human approval present')).not.toBeChecked();
+  await expect(page.locator('.workflow-graph')).toBeVisible();
+  await expect(page.locator('.react-flow__node')).toHaveCount(5);
+  await expect(page.locator('.policy-edge')).toHaveCount(4);
+  await expect(page.locator('.gate-edge')).toHaveCount(2);
+  await page.screenshot({ path: `test-results/baseline-graph-${test.info().project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: '3D', exact: true }).click();
   await expect(page.locator('.spatial-scene canvas')).toBeVisible({ timeout: 30_000 });
   await page.locator('.module-items').getByRole('button', { name: /Human approval present/ }).click();
   await expect(page.locator('.selection-card')).toContainText('Human approval present');
@@ -27,11 +42,11 @@ test('Missing Approval journey', async ({ page }) => {
   await page.locator('.module-items').getByRole('button', { name: /Automated tests pass/ }).click();
   await expect(page.locator('.selection-card')).toContainText('Automated tests pass');
   await page.locator('.module-items').getByRole('button', { name: /Human approval present/ }).click();
-  await page.getByRole('button', { name: '2D list' }).click();
+  await page.getByRole('button', { name: 'Dependency list' }).click();
   await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.dependency-links')).toContainText('POLICY');
   await expect(page.locator('.dependency-links')).toContainText('EXECUTION GATE');
-  await page.getByRole('button', { name: '3D scene' }).click();
+  await page.getByRole('button', { name: '3D', exact: true }).click();
   await expect(page.locator('.spatial-scene canvas')).toBeVisible();
   await page.waitForTimeout(1100);
   await page.screenshot({ path: `test-results/design-${test.info().project.name}.png`, fullPage: true });
@@ -40,6 +55,11 @@ test('Missing Approval journey', async ({ page }) => {
   await page.getByRole('button', { name: 'Apply intervention' }).click();
   await expect(page.locator('.outcome-chip')).toHaveText('UNSAFE_EXECUTION');
   await expect(page.locator('.selection-card')).toContainText('Scenario observation: false');
+  await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await expect(page.locator('.react-flow__node.state-violated')).toHaveCount(2);
+  await expect(page.locator('.react-flow__node.state-unsafe')).toHaveCount(1);
+  await expect(page.locator('.gate-edge')).toHaveCount(2);
+  await page.screenshot({ path: `test-results/unsafe-graph-${test.info().project.name}.png`, fullPage: true });
   await page.waitForTimeout(750);
   await page.screenshot({ path: `test-results/experiment-${test.info().project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Test safeguard' }).click();
@@ -48,6 +68,8 @@ test('Missing Approval journey', async ({ page }) => {
   await expect(page.locator('.outcome-chip')).toHaveText('SAFE_BLOCK');
   await expect(page.locator('.selection-card')).toContainText('The required condition remains violated.');
   await expect(page.locator('.inspection-state')).toHaveText('VIOLATED');
+  await expect(page.locator('.tested-edge')).toHaveCount(1);
+  await page.screenshot({ path: `test-results/safeguard-graph-${test.info().project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Show counterfactual scenario' }).click();
   await expect(page.locator('.outcome-chip')).toHaveText('UNSAFE_EXECUTION');
   await page.getByRole('button', { name: 'Show safeguard scenario' }).click();
@@ -58,12 +80,12 @@ test('Missing Approval journey', async ({ page }) => {
   await expect(page.locator('.selection-card')).toContainText('Execution: BLOCKED');
   await page.waitForTimeout(900);
   await page.screenshot({ path: `test-results/safeguard-${test.info().project.name}.png`, fullPage: true });
-  await page.getByRole('button', { name: '2D list' }).click();
+  await page.getByRole('button', { name: 'Dependency list' }).click();
   await expect(page.locator('.dependency-nodes button').filter({ hasText: 'Human approval present' })).toContainText('VIOLATED');
   await expect(page.locator('.dependency-nodes button').filter({ hasText: 'Deploy to production' })).toContainText('BLOCKED');
   await expect(page.locator('.dependency-links button').filter({ hasText: 'Human approval present → Deploy to production' }).filter({ hasText: 'TESTED GATE' })).toHaveCount(1);
   await page.screenshot({ path: `test-results/safeguard-fallback-${test.info().project.name}.png`, fullPage: true });
-  await page.getByRole('button', { name: '3D scene' }).click();
+  await page.getByRole('button', { name: '3D', exact: true }).click();
   await page.getByRole('button', { name: 'REPLAY' }).click();
   await page.getByRole('button', { name: 'Step forward' }).click();
   await expect(page.getByText('EVENT 01 / 01')).toBeVisible();
@@ -83,17 +105,41 @@ test('Missing Approval journey', async ({ page }) => {
   await page.getByRole('button', { name: 'Overview' }).click();
   await page.waitForTimeout(1300);
   await page.screenshot({ path: `test-results/return-${test.info().project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: 'ATLAS' }).click();
+  await expect(page.locator('.atlas-selection')).toContainText('UNSAFE_EXECUTION');
+  await expect(page.locator('.atlas-selection')).toContainText('SAFE_BLOCK');
 });
 
 test('camera navigation respects reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await page.getByRole('button', { name: '3D', exact: true }).click();
   await expect(page.locator('.outcome-chip')).toHaveText('SAFE_EXECUTION', { timeout: 30_000 });
   await expect(page.locator('.spatial-scene canvas')).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Focus' }).click();
   await expect(page.locator('.spatial-scene')).toHaveAttribute('data-camera-state', 'INSTALLATION');
   await page.getByRole('button', { name: 'Overview' }).click();
   await expect(page.locator('.spatial-scene')).toHaveAttribute('data-camera-state', 'OVERVIEW');
+});
+
+test('Atlas, Graph, and 3D preserve the selected workflow entity', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('main', { name: 'Faultline Atlas' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await expect(page.locator('.outcome-chip')).toHaveText('SAFE_EXECUTION');
+  await page.locator('.react-flow__node').filter({ hasText: 'Human approval present' }).click();
+  await expect(page.locator('.selection-card')).toContainText('Human approval present');
+  await page.getByRole('button', { name: '3D', exact: true }).click();
+  await expect(page.locator('.spatial-scene canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.selection-card')).toContainText('Human approval present');
+  await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await expect(page.locator('.react-flow__node.selected')).toContainText('Human approval present');
+  await page.getByRole('button', { name: 'ATLAS' }).click();
+  await expect(page.locator('.atlas-selection')).toContainText('SAFE_EXECUTION');
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await expect(page.locator('.selection-card')).toContainText('Human approval present');
+  await expect(page.locator('.outcome-chip')).toHaveText('SAFE_EXECUTION');
 });
 
 test('API failure is visible', async ({ page }) => {
@@ -116,6 +162,9 @@ test('2D navigation appears when WebGL is unavailable', async ({ page }) => {
     } as typeof HTMLCanvasElement.prototype.getContext;
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await expect(page.locator('.workflow-graph')).toBeVisible();
+  await page.getByRole('button', { name: '3D', exact: true }).click();
   await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible({ timeout: 30_000 });
   await page.locator('.dependency-nodes button').filter({ hasText: 'Human approval present' }).click();
   await expect(page.locator('.selection-card')).toContainText('Human approval present');

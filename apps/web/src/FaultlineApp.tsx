@@ -2,6 +2,8 @@ import { Component, lazy, Suspense, useEffect, useMemo, useState, type ReactNode
 import type { Workflow, Intervention, EvaluationResult } from '@faultline/contracts';
 import { InspectionPanel } from './components/InspectionPanel';
 import { WorkflowMap } from './scene/WorkflowMap';
+import { WorkflowGraph } from './scene/WorkflowGraph';
+import { FaultlineAtlas } from './scene/FaultlineAtlas';
 import type { CameraState } from './scene/CameraDirector';
 
 const SpatialScene = lazy(() => import('./SpatialScene'));
@@ -22,7 +24,10 @@ async function call<T>(path: string, body?: unknown, signal?: AbortSignal): Prom
 }
 
 export default function FaultlineApp() {
-  const [tab, setTab] = useState<'DESIGN' | 'EXPERIMENT' | 'REPLAY'>('DESIGN');
+  const [tab, setTab] = useState<'ATLAS' | 'DESIGN' | 'EXPERIMENT' | 'REPLAY'>('ATLAS');
+  const [lastInvestigationTab, setLastInvestigationTab] = useState<'DESIGN' | 'EXPERIMENT'>('DESIGN');
+  const [samples, setSamples] = useState<Workflow[]>([]);
+  const [atlasSelected, setAtlasSelected] = useState<string | null>(null);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [text, setText] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
@@ -40,7 +45,8 @@ export default function FaultlineApp() {
   const [scenarioView, setScenarioView] = useState<'BASELINE' | 'COUNTERFACTUAL' | 'SAFEGUARD'>('BASELINE');
   const [cameraState, setCameraState] = useState<CameraState>('INSTALLATION');
   const [zoom, setZoom] = useState(() => matchMedia('(max-width: 680px)').matches ? 1.45 : 1);
-  const [sceneMode, setSceneMode] = useState(true);
+  const [sceneMode, setSceneMode] = useState<'GRAPH' | '3D' | 'LIST'>('GRAPH');
+  const [slow3D, setSlow3D] = useState(false);
   const [controller, setController] = useState<AbortController | null>(null);
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -61,7 +67,7 @@ export default function FaultlineApp() {
     setWorkflow(g); setText(g.sourceDocuments[0]?.text ?? ''); setSelected(null); setIntervention(null); setFailure(null); setVerification(null); setTrace([]); setModel(null); setInvestigationId(null); setCameraState('INSTALLATION'); setScenarioView('BASELINE');
     run('Evaluating baseline', s => call<{ result: EvaluationResult }>('/api/v1/experiments/run', { workflow: g }, s), x => setBaseline(x.result));
   }
-  useEffect(() => { call<{ samples: Workflow[] }>('/api/v1/samples').then(x => { if (x.samples[0]) setGraph(x.samples[0]); }).catch(e => setError(e.message)); }, []);
+  useEffect(() => { call<{ samples: Workflow[] }>('/api/v1/samples').then(x => { setSamples(x.samples); if (x.samples[0]) { setAtlasSelected(x.samples[0].id); setGraph(x.samples[0]); } }).catch(e => setError(e.message)); }, []);
   useEffect(() => { call<{ liveModelEnabled: boolean }>('/api/v1/budget').then(x => setLiveEnabled(x.liveModelEnabled)).catch(() => setLiveEnabled(false)); }, []);
   function editCondition(id: string, value: boolean | null) { if (workflow) setGraph({ ...workflow, conditions: workflow.conditions.map(c => c.id === id ? { ...c, observedValue: value } : c) }); }
   function toggleGate(stepId: string, conditionId: string) { if (workflow) setGraph({ ...workflow, steps: workflow.steps.map(s => s.id === stepId ? { ...s, executionGateIds: s.executionGateIds.includes(conditionId) ? s.executionGateIds.filter(id => id !== conditionId) : [...s.executionGateIds, conditionId] } : s) }); }
@@ -72,7 +78,7 @@ export default function FaultlineApp() {
   async function exportTrace() { if (!workflow || !baseline || !failure || !intervention) return; try { const report = await call<unknown>('/api/v1/reports/export', { workflow, investigation: { investigationId: investigationId ?? undefined, baseline, intervention, failure, verification, trace, model } }); const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = 'faultline-certificate.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); } catch (e) { setError(e instanceof Error ? e.message : 'Certificate export failed'); } }
   const lanes = [{ name: 'BASELINE', result: baseline }, { name: 'COUNTERFACTUAL', result: failure }, { name: 'SAFEGUARD', result: verification?.repaired ?? null }];
   const maxFrame = Math.max(0, ...lanes.map(l => l.result?.executionTrace.length ?? 0));
-  const activeView = tab === 'REPLAY' ? replayLane : tab === 'EXPERIMENT' ? scenarioView : 'BASELINE';
+  const activeView = tab === 'REPLAY' ? replayLane : (tab === 'EXPERIMENT' || tab === 'ATLAS') ? scenarioView : 'BASELINE';
   const activeResult = lanes.find(l => l.name === activeView)?.result ?? baseline;
   const repairedStep = verification?.repaired.stepResults.find(item => item.stepId === verification.safeguard.stepId);
   const repairedPolicy = verification?.repaired.policyResults.find(item => item.state === 'VIOLATED')?.state ?? verification?.repaired.policyResults[0]?.state ?? 'UNKNOWN';
@@ -89,14 +95,18 @@ export default function FaultlineApp() {
     const { stepId, conditionId } = verification.safeguard;
     return { ...workflow, steps: workflow.steps.map(step => step.id === stepId && !step.executionGateIds.includes(conditionId) ? { ...step, executionGateIds: [...step.executionGateIds, conditionId] } : step) };
   }, [workflow, activeView, verification]);
-  function selectModule(id: string) { setSelected(id); setCameraState('MODULE_FOCUS'); }
+  function selectModule(id: string) { setSelected(id); if (sceneMode === '3D') setCameraState('MODULE_FOCUS'); }
   function selectScenario(name: 'BASELINE' | 'COUNTERFACTUAL' | 'SAFEGUARD') { setScenarioView(name); setCameraState(name === 'SAFEGUARD' ? 'SAFEGUARD' : name === 'COUNTERFACTUAL' ? 'COUNTERFACTUAL' : 'INSTALLATION'); }
   const fallback = <WorkflowMap workflow={sceneWorkflow} result={activeResult} intervention={scenarioIntervention} selected={selected} testedGate={testedGate} onSelect={selectModule} />;
+  function openAtlasWorkflow(next: Workflow) { if (workflow?.id !== next.id) setGraph(next); setAtlasSelected(next.id); setTab(lastInvestigationTab); }
+  function openInvestigationTab(next: 'DESIGN' | 'EXPERIMENT') { setLastInvestigationTab(next); setTab(next); }
   function selectCondition(id: string) { const c = workflow?.conditions.find(x => x.id === id); if (c) setIntervention({ id: `user-${c.id}`, targetConditionId: c.id, originalValue: c.observedValue, replacementValue: c.observedValue === true ? false : true, reason: 'Manual counterfactual', proposedBy: 'USER', validated: true }); }
   return <div className="app visual-app">
     <header className="topbar"><div className="brand"><span className="brand-mark">F/</span> FAULTLINE <span className="version">EXECUTION LAB</span></div><div className="top-context">{workflow?.title ?? 'WORKFLOW UNLOADED'} <span className="header-status"><span className="status-dot" /> {busy || 'SIMULATOR READY'}</span></div></header>
-    <div className="visual-workspace"><nav className="icon-rail" aria-label="Workspace">{(['DESIGN', 'EXPERIMENT', 'REPLAY'] as const).map((name, i) => <button key={name} className={tab === name ? 'active' : ''} title={name} aria-label={name} onClick={() => setTab(name)}><span>0{i + 1}</span><b>{name.slice(0, 1)}</b></button>)}<div className="rail-monogram">FL</div></nav>
+    <div className="visual-workspace"><nav className="icon-rail" aria-label="Workspace">{(['ATLAS', 'INVESTIGATION', 'REPLAY'] as const).map((name, i) => <button key={name} className={(name === 'INVESTIGATION' ? tab === 'DESIGN' || tab === 'EXPERIMENT' : tab === name) ? 'active' : ''} title={name} aria-label={name} onClick={() => setTab(name === 'INVESTIGATION' ? lastInvestigationTab : name)}><span>0{i + 1}</span><b>{name.slice(0, 1)}</b></button>)}<div className="rail-monogram">FL</div></nav>
+      {tab === 'ATLAS' ? <FaultlineAtlas workflows={samples} selectedWorkflowId={atlasSelected} selectedEntityId={selected} activeWorkflowId={workflow?.id ?? null} baseline={baseline} counterfactual={failure} safeguard={verification?.repaired ?? null} completedInvestigations={investigationId ? 1 : 0} error={error} onSelect={setAtlasSelected} onSelectEntity={setSelected} onOpen={openAtlasWorkflow} /> : <>
       <aside className="diagnostic"><div className="diagnostic-title"><span>DEPLOYMENT / {tab}</span><h1>{workflow?.title ?? 'Select a workflow'}</h1><small>Decision model / Version 1</small></div>
+        {tab !== 'REPLAY' && <div className="investigation-tabs" aria-label="Investigation tools"><button aria-pressed={tab === 'DESIGN'} onClick={() => openInvestigationTab('DESIGN')}>DESIGN</button><button aria-pressed={tab === 'EXPERIMENT'} onClick={() => openInvestigationTab('EXPERIMENT')}>EXPERIMENT</button></div>}
         {tab === 'DESIGN' && <div className="diagnostic-scroll"><section className="diag-section"><div className="section-head">SOURCE INPUT <span>01</span></div><label htmlFor="source">Deployment procedure</label><textarea id="source" value={text} onChange={e => setText(e.target.value)} rows={7} /><div className="compact-actions"><button onClick={analyze} disabled={!liveEnabled || !!busy || text.length < 30}>Analyze workflow</button><button className="ghost" onClick={() => call<{ samples: Workflow[] }>('/api/v1/samples').then(x => x.samples[0] && setGraph(x.samples[0]))}>Load sample</button></div>{!liveEnabled && <p className="diag-copy inference-note">Live extraction is disabled on this preview. The sample remains available for deterministic testing.</p>}</section>
           <section className="diag-section"><div className="section-head">DECLARED POLICY <span>{workflow?.policyRules.length ?? 0}</span></div>{workflow?.policyRules.map(r => <button className="policy-entry" key={r.id} onClick={() => selectModule(r.subjectStepId)}><span className="small-dot amber" /><span>{r.description}<small>{r.origin} / {r.requiredConditionIds.join(', ')}</small></span></button>)}</section>
           <section className="diag-section"><div className="section-head">OBSERVATIONS <span>{workflow?.conditions.length ?? 0}</span></div>{workflow?.conditions.map(c => <div className="condition-row" key={c.id}><span>{c.name}</span><select aria-label={`Observed value for ${c.name}`} value={String(c.observedValue)} onChange={e => editCondition(c.id, e.target.value === 'null' ? null : e.target.value === 'true')}><option value="true">PASS</option><option value="false">FAIL</option><option value="null">UNKNOWN</option></select></div>)}</section>
@@ -107,14 +117,16 @@ export default function FaultlineApp() {
       </aside>
       <main className="visual-main"><div className="scene-header"><div><span className="breadcrumb">WORKFLOW / {tab} / {selected ?? 'OVERVIEW'}</span><h2>{selectedCondition?.name ?? selectedStep?.name ?? 'Execution Lattice'}</h2></div><div className={`outcome-chip ${outcome === 'UNSAFE_EXECUTION' ? 'danger' : ''}`}>{outcome}</div></div>
         {error && <div className="error" role="alert">{error}</div>}
-        <div className="scene-shell"><div className="scene-control top"><button onClick={() => setCameraState('RETURN')}>Overview</button><button onClick={() => setCameraState('APPROACH')}>Focus</button><button aria-label="Zoom in" title="Zoom in" onClick={() => setZoom(z => Math.max(.7, Math.round((z - .15) * 100) / 100))}>+</button><button aria-label="Zoom out" title="Zoom out" onClick={() => setZoom(z => Math.min(1.6, Math.round((z + .15) * 100) / 100))}>-</button><button onClick={() => setSceneMode(!sceneMode)}>{sceneMode ? '2D list' : '3D scene'}</button>{controller && <button onClick={() => controller.abort()}>Cancel</button>}</div>
+        <div className="scene-shell"><div className="scene-control top">{sceneMode === '3D' && <><button onClick={() => setCameraState('RETURN')}>Overview</button><button onClick={() => setCameraState('APPROACH')}>Focus</button><button aria-label="Zoom in" title="Zoom in" onClick={() => setZoom(z => Math.max(.7, Math.round((z - .15) * 100) / 100))}>+</button><button aria-label="Zoom out" title="Zoom out" onClick={() => setZoom(z => Math.min(1.6, Math.round((z + .15) * 100) / 100))}>-</button></>}<button aria-pressed={sceneMode === 'GRAPH'} onClick={() => setSceneMode('GRAPH')}>Graph</button><button aria-pressed={sceneMode === '3D'} onClick={() => setSceneMode('3D')}>3D</button><button aria-pressed={sceneMode === 'LIST'} onClick={() => setSceneMode('LIST')}>Dependency list</button>{controller && <button onClick={() => controller.abort()}>Cancel</button>}</div>
           {tab === 'EXPERIMENT' && <div className="scenario-control" aria-label="Scenario view">{lanes.map(l => <button key={l.name} aria-label={`Show ${l.name.toLowerCase()} scenario`} aria-pressed={scenarioView === l.name} disabled={!l.result} onClick={() => selectScenario(l.name as typeof scenarioView)}>{l.name}</button>)}</div>}
-          {workflow && sceneMode ? <SceneBoundary fallback={fallback}><Suspense fallback={<div className="scene-loading">Loading execution lattice</div>}><SpatialScene workflow={sceneWorkflow ?? workflow} result={activeResult} intervention={scenarioIntervention} selected={selected} testedGate={testedGate} onSelect={selectModule} cameraState={cameraState} reducedMotion={reducedMotion} zoom={zoom} /></Suspense></SceneBoundary> : fallback}
+          {slow3D && sceneMode === '3D' && <div className="slow-scene" role="status">3D rendering is slow on this device. <button onClick={() => setSceneMode('GRAPH')}>Open graph</button></div>}
+          {sceneMode === '3D' && workflow ? <SceneBoundary fallback={fallback}><Suspense fallback={<div className="scene-loading">Loading execution lattice</div>}><SpatialScene workflow={sceneWorkflow ?? workflow} result={activeResult} intervention={scenarioIntervention} selected={selected} testedGate={testedGate} onSelect={selectModule} cameraState={cameraState} reducedMotion={reducedMotion} zoom={zoom} onSlow={() => setSlow3D(true)} /></Suspense></SceneBoundary> : sceneMode === 'GRAPH' ? <WorkflowGraph workflow={sceneWorkflow} result={activeResult} intervention={scenarioIntervention} selected={selected} testedGate={testedGate} onSelect={selectModule} /> : fallback}
           <div className="scene-legend"><span><i className="blue" /> EXECUTION</span><span><i className="purple" /> POLICY</span><span><i className="teal" /> SATISFIED</span><span><i className="coral" /> VIOLATED</span><span><i className="amber" /> UNKNOWN</span></div>
           <InspectionPanel workflow={workflow} result={activeResult} intervention={scenarioIntervention} selected={selected} activeView={activeView} verification={verification} canVerify={tab === 'EXPERIMENT' && failure?.outcome === 'UNSAFE_EXECUTION' && !verification} onVerify={verify} busy={!!busy} />
         </div>
         <div className="bottom-deck"><div className="module-strip"><div className="section-head">SYSTEM MODULES <span>{entities.length}</span></div><div className="module-items">{entities.map((e, i) => <button key={e.id} className={selected === e.id ? 'selected' : ''} onClick={() => selectModule(e.id)}><span>{String(i + 1).padStart(2, '0')}</span>{e.name}</button>)}</div></div><div className="timeline-strip"><div className="section-head">EVALUATION / TRACE</div><div className="timeline-grid">{lanes.map(l => <div key={l.name}><small>{l.name}</small><strong className={l.result?.outcome === 'UNSAFE_EXECUTION' ? 'unsafe' : 'safe'}>{l.result?.outcome ?? 'NOT RUN'}</strong><span className="trace-event">{l.result?.executionTrace[0]?.status ?? 'AWAITING TRACE'}</span></div>)}</div></div></div>
       </main>
+      </>}
     </div>
   </div>;
 }
