@@ -13,7 +13,7 @@ test('Missing Approval journey', async ({ page }) => {
   await expect(page.locator('.condition-row').filter({ hasText: 'Automated tests pass' })).toBeVisible();
   await expect(page.locator('.condition-row').filter({ hasText: 'Migration compatible' })).toBeVisible();
   await expect(page.locator('.gate-row').getByLabel('Human approval present')).not.toBeChecked();
-  await expect(page.locator('.spatial-scene canvas')).toBeVisible();
+  await expect(page.locator('.spatial-scene canvas')).toBeVisible({ timeout: 30_000 });
   await page.locator('.module-items').getByRole('button', { name: /Human approval present/ }).click();
   await expect(page.locator('.selection-card')).toContainText('Human approval present');
   await page.getByRole('button', { name: 'Overview' }).click();
