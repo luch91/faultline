@@ -2,9 +2,9 @@
 
 The public deterministic preview is at https://faultline-web-preview.pages.dev. The API Worker is at https://faultline-api-preview.judithorluchee.workers.dev. These addresses were verified on October 27, 2026.
 
-The Pages project is a separate direct-upload staging project. Its frontend build sets `VITE_API_URL` to the preview Worker URL. The Worker uses `apps/api/wrangler.preview.jsonc`, whose live model switch and credit confirmation are both false. No Meta key is installed in the preview Worker. The Durable Object binding remains active for request throttling and the budget ledger.
+The Pages project is a separate direct-upload staging project. Its frontend build sets `VITE_API_URL` to the preview Worker URL. The Worker uses `apps/api/wrangler.preview.jsonc`. Meta's Standard-mode key is stored as a Worker secret. Live model calls are enabled with the $100 internal ledger ceiling, daily and per-client allowances, request throttling, and a kill switch. The Durable Object binding provides request throttling and budget accounting. There is no date-based shutoff. Promotional-credit expiry or exhaustion must be monitored in Meta Billing; the Worker cannot verify that balance automatically.
 
-The authorized Cloudflare account is on an existing Workers Paid plan. Cloudflare can charge for usage beyond the plan's included allowances. The preview has no Cloudflare account-level spend cap, so its public availability does not guarantee zero additional charges. Check account usage in Cloudflare Billing before increasing traffic or enabling live inference.
+The authorized Cloudflare account is on an existing Workers Paid plan. Cloudflare can charge for usage beyond the plan's included allowances. The preview has no Cloudflare account-level spend cap, so its public availability does not guarantee zero additional charges. The owner confirmed current usage is within the account budget.
 
 To rebuild and deploy the preview from a validated commit in PowerShell:
 

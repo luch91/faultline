@@ -9,7 +9,7 @@ Faultline tests declared deployment policy against the conditions an automated w
 
 ## Staging preview
 
-[Open the deterministic Faultline preview](https://faultline-web-preview.pages.dev). Live Meta inference is disabled on this preview. The Worker is at [faultline-api-preview.judithorluchee.workers.dev](https://faultline-api-preview.judithorluchee.workers.dev/healthz).
+[Open the Faultline preview](https://faultline-web-preview.pages.dev). Live Meta inference is available under server-side spending and rate limits. The deterministic sample works without model access. The Worker is at [faultline-api-preview.judithorluchee.workers.dev](https://faultline-api-preview.judithorluchee.workers.dev/healthz).
 
 ## Product demonstration
 
@@ -47,7 +47,7 @@ Set `FAULTLINE_STAGING_URL=https://faultline-web-preview.pages.dev` before `pnpm
 
 ## Security and limitations
 
-Faultline never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Request and model-call limits are in place, but public live inference remains disabled pending reconciliation and deployment review. The complete multi-tool catalogue remains outside this milestone.
+Faultline never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Request and model-call limits are in place; live inference can be disabled through the Worker switch. Promotional-credit expiry is not detected automatically. The complete multi-tool catalogue remains outside this milestone.
 
 ## Hackathon contribution
 
