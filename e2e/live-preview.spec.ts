@@ -5,7 +5,7 @@ test('Live Meta preview milestone', async ({ page }) => {
   test.setTimeout(120_000);
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Model the decision' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'The Missing Approval' })).toBeVisible();
 
   const extractionResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/workflows/extract'));
   await page.getByRole('button', { name: 'Analyze workflow' }).click();
@@ -20,7 +20,7 @@ test('Live Meta preview milestone', async ({ page }) => {
     await page.getByRole('combobox', { name: `Observed value for ${condition.name}` }).selectOption('true');
   }
 
-  await page.getByRole('button', { name: /EXPERIMENT/ }).click();
+  await page.getByRole('button', { name: 'EXPERIMENT' }).click();
   const investigationResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/investigations'));
   await page.getByRole('button', { name: 'Run investigation' }).click();
   const investigation = await investigationResponse;
@@ -31,7 +31,7 @@ test('Live Meta preview milestone', async ({ page }) => {
   expect(result.trace).toHaveLength(2);
   expect(result.investigationId).toMatch(/^[a-f0-9-]{36}$/);
 
-  await page.getByRole('button', { name: /REPLAY/ }).click();
+  await page.getByRole('button', { name: 'REPLAY' }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export certificate' }).click();
   const download = await downloadPromise;

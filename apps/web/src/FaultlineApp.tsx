@@ -1,0 +1,87 @@
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import type { Workflow, Intervention, EvaluationResult } from '@faultline/contracts';
+
+const SpatialScene = lazy(() => import('./SpatialScene'));
+type Investigation = { investigationId?: string; baseline: EvaluationResult; intervention: Intervention; failure: EvaluationResult; verification: { repaired: EvaluationResult; safeguard: { stepId: string; conditionId: string }; resolved: boolean } | null; trace: Array<{ id: string; tool: string; status: string; arguments: unknown; result: unknown }>; model: { id: string | null; usage: unknown } };
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+async function call<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  let session = sessionStorage.getItem('faultline-session');
+  if (!session) { session = crypto.randomUUID(); sessionStorage.setItem('faultline-session', session); }
+  const response = await fetch(`${API}${path}`, { method: body ? 'POST' : 'GET', headers: { 'X-Faultline-Session': session, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `Request failed: ${response.status}`);
+  return result as T;
+}
+
+export default function FaultlineApp() {
+  const [tab, setTab] = useState<'DESIGN' | 'EXPERIMENT' | 'REPLAY'>('DESIGN');
+  const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [text, setText] = useState('');
+  const [selected, setSelected] = useState<string | null>(null);
+  const [intervention, setIntervention] = useState<Intervention | null>(null);
+  const [baseline, setBaseline] = useState<EvaluationResult | null>(null);
+  const [failure, setFailure] = useState<EvaluationResult | null>(null);
+  const [verification, setVerification] = useState<Investigation['verification']>(null);
+  const [trace, setTrace] = useState<Investigation['trace']>([]);
+  const [model, setModel] = useState<Investigation['model'] | null>(null);
+  const [investigationId, setInvestigationId] = useState<string | null>(null);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [frame, setFrame] = useState(0);
+  const [replayLane, setReplayLane] = useState<'BASELINE' | 'COUNTERFACTUAL' | 'SAFEGUARD'>('COUNTERFACTUAL');
+  const [overview, setOverview] = useState(false);
+  const [sceneMode, setSceneMode] = useState(true);
+  const [controller, setController] = useState<AbortController | null>(null);
+  const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  useEffect(() => { const m = matchMedia('(prefers-reduced-motion: reduce)'); const change = () => setReducedMotion(m.matches); m.addEventListener('change', change); return () => m.removeEventListener('change', change); }, []);
+
+  async function run<T>(label: string, fn: (signal: AbortSignal) => Promise<T>, done: (result: T) => void) {
+    const ac = new AbortController(); setController(ac); setBusy(label); setError('');
+    try { done(await fn(ac.signal)); } catch (e) { if (!ac.signal.aborted) setError(e instanceof Error ? e.message : 'Request failed'); }
+    finally { setBusy(''); setController(null); }
+  }
+  function setGraph(g: Workflow) {
+    setWorkflow(g); setText(g.sourceDocuments[0]?.text ?? ''); setSelected(null); setIntervention(null); setFailure(null); setVerification(null); setTrace([]); setModel(null); setInvestigationId(null); setOverview(false);
+    run('Evaluating baseline', s => call<{ result: EvaluationResult }>('/api/v1/experiments/run', { workflow: g }, s), x => setBaseline(x.result));
+  }
+  useEffect(() => { call<{ samples: Workflow[] }>('/api/v1/samples').then(x => { if (x.samples[0]) setGraph(x.samples[0]); }).catch(e => setError(e.message)); }, []);
+  function editCondition(id: string, value: boolean | null) { if (workflow) setGraph({ ...workflow, conditions: workflow.conditions.map(c => c.id === id ? { ...c, observedValue: value } : c) }); }
+  function toggleGate(stepId: string, conditionId: string) { if (workflow) setGraph({ ...workflow, steps: workflow.steps.map(s => s.id === stepId ? { ...s, executionGateIds: s.executionGateIds.includes(conditionId) ? s.executionGateIds.filter(id => id !== conditionId) : [...s.executionGateIds, conditionId] } : s) }); }
+  function analyze() { run('Extracting workflow with Muse Spark', s => call<{ workflow: Workflow; model: Investigation['model'] }>('/api/v1/workflows/extract', { text }, s), x => { setGraph(x.workflow); setModel(x.model); }); }
+  function applyIntervention() { if (!workflow || !intervention) return; run('Evaluating intervention', s => call<{ result: EvaluationResult }>('/api/v1/experiments/run', { workflow, intervention }, s), x => { setFailure(x.result); setTab('EXPERIMENT'); setOverview(false); }); }
+  function investigate() { if (!workflow) return; run('Meta investigator calling simulator', s => call<Investigation>('/api/v1/investigations', { workflow }, s), x => { setBaseline(x.baseline); setIntervention(x.intervention); setFailure(x.failure); setVerification(x.verification); setTrace(x.trace); setModel(x.model); setInvestigationId(x.investigationId ?? null); setTab('EXPERIMENT'); setOverview(false); }); }
+  function verify() { if (!workflow || !intervention) return; const stepId = workflow.policyRules.find(r => r.requiredConditionIds.includes(intervention.targetConditionId))?.subjectStepId; if (!stepId) return; run('Testing safeguard', s => call<{ repaired: EvaluationResult; resolved: boolean }>('/api/v1/safeguards/verify', { workflow, intervention, stepId, conditionId: intervention.targetConditionId }, s), x => setVerification({ repaired: x.repaired, resolved: x.resolved, safeguard: { stepId, conditionId: intervention.targetConditionId } })); }
+  async function exportTrace() { if (!workflow || !baseline || !failure || !intervention) return; try { const report = await call<unknown>('/api/v1/reports/export', { workflow, investigation: { investigationId: investigationId ?? undefined, baseline, intervention, failure, verification, trace, model } }); const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = 'faultline-certificate.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); } catch (e) { setError(e instanceof Error ? e.message : 'Certificate export failed'); } }
+  const lanes = [{ name: 'BASELINE', result: baseline }, { name: 'COUNTERFACTUAL', result: failure }, { name: 'SAFEGUARD', result: verification?.repaired ?? null }];
+  const maxFrame = Math.max(0, ...lanes.map(l => l.result?.executionTrace.length ?? 0));
+  const activeResult = tab === 'REPLAY' ? (lanes.find(l => l.name === replayLane)?.result ?? baseline) : failure ?? baseline;
+  const selectedCondition = workflow?.conditions.find(c => c.id === selected);
+  const selectedStep = workflow?.steps.find(s => s.id === selected);
+  const selectedRule = workflow?.policyRules.find(r => r.subjectStepId === selected || r.requiredConditionIds.includes(selected ?? ''));
+  const entities = useMemo(() => workflow ? [...workflow.conditions, ...workflow.steps] : [], [workflow]);
+  const outcome = activeResult?.outcome ?? 'AWAITING EVALUATION';
+  function selectCondition(id: string) { const c = workflow?.conditions.find(x => x.id === id); if (c) setIntervention({ id: `user-${c.id}`, targetConditionId: c.id, originalValue: c.observedValue, replacementValue: c.observedValue === true ? false : true, reason: 'Manual counterfactual', proposedBy: 'USER', validated: true }); }
+  return <div className="app visual-app">
+    <header className="topbar"><div className="brand"><span className="brand-mark">F/</span> FAULTLINE <span className="version">EXECUTION LAB</span></div><div className="top-context">{workflow?.title ?? 'WORKFLOW UNLOADED'} <span className="header-status"><span className="status-dot" /> {busy || 'SIMULATOR READY'}</span></div></header>
+    <div className="visual-workspace"><nav className="icon-rail" aria-label="Workspace">{(['DESIGN', 'EXPERIMENT', 'REPLAY'] as const).map((name, i) => <button key={name} className={tab === name ? 'active' : ''} title={name} aria-label={name} onClick={() => setTab(name)}><span>0{i + 1}</span><b>{name.slice(0, 1)}</b></button>)}<div className="rail-monogram">FL</div></nav>
+      <aside className="diagnostic"><div className="diagnostic-title"><span>DEPLOYMENT / {tab}</span><h1>{workflow?.title ?? 'Select a workflow'}</h1><small>Decision model / Version 1</small></div>
+        {tab === 'DESIGN' && <div className="diagnostic-scroll"><section className="diag-section"><div className="section-head">SOURCE INPUT <span>01</span></div><label htmlFor="source">Deployment procedure</label><textarea id="source" value={text} onChange={e => setText(e.target.value)} rows={7} /><div className="compact-actions"><button onClick={analyze} disabled={!!busy || text.length < 30}>Analyze workflow</button><button className="ghost" onClick={() => call<{ samples: Workflow[] }>('/api/v1/samples').then(x => x.samples[0] && setGraph(x.samples[0]))}>Load sample</button></div></section>
+          <section className="diag-section"><div className="section-head">DECLARED POLICY <span>{workflow?.policyRules.length ?? 0}</span></div>{workflow?.policyRules.map(r => <button className="policy-entry" key={r.id} onClick={() => setSelected(r.subjectStepId)}><span className="small-dot amber" /><span>{r.description}<small>{r.origin} / {r.requiredConditionIds.join(', ')}</small></span></button>)}</section>
+          <section className="diag-section"><div className="section-head">OBSERVATIONS <span>{workflow?.conditions.length ?? 0}</span></div>{workflow?.conditions.map(c => <div className="condition-row" key={c.id}><span>{c.name}</span><select aria-label={`Observed value for ${c.name}`} value={String(c.observedValue)} onChange={e => editCondition(c.id, e.target.value === 'null' ? null : e.target.value === 'true')}><option value="true">PASS</option><option value="false">FAIL</option><option value="null">UNKNOWN</option></select></div>)}</section>
+          <section className="diag-section"><div className="section-head">EXECUTION GATES</div>{workflow?.steps.map(s => <div key={s.id} className="gate-row"><strong>{s.name}</strong>{workflow.conditions.map(c => <label key={c.id}><input type="checkbox" checked={s.executionGateIds.includes(c.id)} onChange={() => toggleGate(s.id, c.id)} />{c.name}</label>)}</div>)}</section></div>}
+        {tab === 'EXPERIMENT' && <div className="diagnostic-scroll"><section className="diag-section"><div className="section-head">ROOT CAUSE ANALYSIS</div><p className="diag-copy">{failure?.outcome === 'UNSAFE_EXECUTION' ? `Rule ${failure.firstViolation} is violated while execution remains eligible.` : failure ? `The intervention evaluated as ${failure.outcome}.` : 'Select a condition and run a counterfactual.'}</p></section><section className="diag-section"><div className="section-head">INTERVENTION</div><label htmlFor="condition">Condition</label><select id="condition" value={intervention?.targetConditionId ?? ''} onChange={e => selectCondition(e.target.value)}><option value="">Select a condition</option>{workflow?.conditions.filter(c => typeof c.observedValue === 'boolean').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>{intervention && <div className="delta">{String(intervention.originalValue)} <b>→</b> {String(intervention.replacementValue)}</div>}<div className="compact-actions vertical"><button onClick={investigate} disabled={!workflow || !!busy}>Run investigation</button><button className="ghost" onClick={applyIntervention} disabled={!intervention || !!busy}>Apply intervention</button><button className="ghost" onClick={verify} disabled={!failure || !!busy}>Test safeguard</button></div></section><section className="diag-section"><div className="section-head">ACTUAL TOOL ACTIONS <span>{trace.length}</span></div>{trace.length ? trace.map(t => <details key={t.id} className="trace"><summary>{t.tool} <span>{t.status}</span></summary><pre>{JSON.stringify(t.result, null, 2)}</pre></details>) : <p className="diag-copy">No agent tool calls recorded.</p>}{model?.id && <small>Meta response ID: {model.id}</small>}</section></div>}
+        {tab === 'REPLAY' && <div className="diagnostic-scroll"><section className="diag-section"><div className="section-head">EXECUTION RECORDER</div><p className="diag-copy">Compare each simulator trace at the same logical step. Select an event to inspect the actual decision.</p><div className="replay-controls"><button className="ghost" onClick={() => setFrame(0)}>Reset</button><button className="ghost" onClick={() => setFrame(Math.max(0, frame - 1))}>Step back</button><button onClick={() => setFrame(Math.min(maxFrame, frame + 1))}>Step forward</button></div><div className="event-count">EVENT {String(frame).padStart(2, '0')} / {String(maxFrame).padStart(2, '0')}</div></section>{lanes.map(l => <section className="diag-section" key={l.name}><button className={`lane-selector ${replayLane === l.name ? 'active' : ''}`} onClick={() => setReplayLane(l.name as typeof replayLane)}>{l.name}</button><strong className={l.result?.outcome === 'UNSAFE_EXECUTION' ? 'unsafe' : 'safe'}>{l.result?.outcome ?? 'NOT RUN'}</strong>{l.result?.executionTrace.map((ev, i) => <button key={`${ev.stepId}-${i}`} className={`replay-event ${i < frame ? 'visible' : ''}`} onClick={() => { setFrame(i + 1); setSelected(ev.stepId); setReplayLane(l.name as typeof replayLane); }}><span>{String(i + 1).padStart(2, '0')} / {ev.stepId}</span><small>{i < frame ? `${ev.status}: ${ev.reason}` : 'PENDING'}</small></button>)}</section>)}<button className="export-control" onClick={exportTrace} disabled={!failure}>Export certificate</button></div>}
+        <div className="diagnostic-footer">Faultline evaluates declared workflow rules and hypothetical conditions. It does not execute deployments or guarantee real-world safety.</div>
+      </aside>
+      <main className="visual-main"><div className="scene-header"><div><span className="breadcrumb">WORKFLOW / {tab} / {selected ?? 'OVERVIEW'}</span><h2>{selectedCondition?.name ?? selectedStep?.name ?? 'Execution Lattice'}</h2></div><div className={`outcome-chip ${outcome === 'UNSAFE_EXECUTION' ? 'danger' : ''}`}>{outcome}</div></div>
+        {error && <div className="error" role="alert">{error}</div>}
+        <div className="scene-shell"><div className="scene-control top"><button onClick={() => setOverview(true)}>Overview</button><button onClick={() => setOverview(false)}>Focus</button><button onClick={() => setSceneMode(!sceneMode)}>{sceneMode ? '2D list' : '3D scene'}</button>{controller && <button onClick={() => controller.abort()}>Cancel</button>}</div>
+          {workflow && sceneMode ? <Suspense fallback={<div className="scene-loading">Loading execution lattice</div>}><SpatialScene workflow={workflow} result={activeResult} selected={selected} onSelect={id => { setSelected(id); setOverview(false); }} overview={overview} reducedMotion={reducedMotion} /></Suspense> : <div className="scene-fallback" role="list" aria-label="Workflow modules">{entities.map(e => <button role="listitem" key={e.id} onClick={() => setSelected(e.id)}>{e.name}<span>{e.id}</span></button>)}</div>}
+          <div className="scene-legend"><span><i className="blue" /> EXECUTION</span><span><i className="teal" /> SATISFIED</span><span><i className="coral" /> VIOLATED</span><span><i className="amber" /> UNKNOWN</span></div>
+          <div className="selection-card"><span className="section-head">SELECTED MODULE</span><strong>{selectedCondition?.name ?? selectedStep?.name ?? 'Select a module'}</strong>{selectedStep && <small>Execution gates: {selectedStep.executionGateIds.join(', ') || 'None'}</small>}{selectedRule && <small>Policy: {selectedRule.requiredConditionIds.join(', ')}</small>}{(selectedCondition?.sourceSpans ?? selectedStep?.sourceSpans ?? []).map((s, i) => <blockquote key={i}>{s.excerpt}<small>Source {s.startOffset} to {s.endOffset}</small></blockquote>)}</div>
+        </div>
+        <div className="bottom-deck"><div className="module-strip"><div className="section-head">SYSTEM MODULES <span>{entities.length}</span></div><div className="module-items">{entities.map((e, i) => <button key={e.id} className={selected === e.id ? 'selected' : ''} onClick={() => { setSelected(e.id); setOverview(false); }}><span>{String(i + 1).padStart(2, '0')}</span>{e.name}</button>)}</div></div><div className="timeline-strip"><div className="section-head">EVALUATION / TRACE</div><div className="timeline-grid">{lanes.map(l => <div key={l.name}><small>{l.name}</small><strong className={l.result?.outcome === 'UNSAFE_EXECUTION' ? 'unsafe' : 'safe'}>{l.result?.outcome ?? 'NOT RUN'}</strong></div>)}</div></div></div>
+      </main>
+    </div>
+  </div>;
+}
