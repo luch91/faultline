@@ -1,22 +1,25 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
-import type { Workflow, EvaluationResult } from '@faultline/contracts';
+import type { Workflow, EvaluationResult, Intervention } from '@faultline/contracts';
 import { ExecutionHardware, type HardwareKind } from './scene/ExecutionHardware';
+import { CameraDirector, type CameraState } from './scene/CameraDirector';
+import { WorkflowMap } from './scene/WorkflowMap';
+import { visualState, type VisualState } from './scene/visualState';
 
-type State = 'SAFE' | 'UNSAFE' | 'UNKNOWN' | 'BLOCKED' | 'READY';
-type Module = { id: string; name: string; x: number; z: number; state: State; kind: HardwareKind };
-type Props = { workflow: Workflow; result: EvaluationResult | null; selected: string | null; onSelect: (id: string) => void; overview: boolean; reducedMotion: boolean; zoom: number };
+type Module = { id: string; name: string; x: number; z: number; state: VisualState; kind: HardwareKind };
+type TestedGate = { stepId: string; conditionId: string } | null;
+type Props = { workflow: Workflow; result: EvaluationResult | null; intervention: Intervention | null; selected: string | null; testedGate: TestedGate; onSelect: (id: string) => void; cameraState: CameraState; reducedMotion: boolean; zoom: number };
 
-function stateColor(state: State) {
-  if (state === 'UNSAFE') return '#f07858';
+function stateColor(state: VisualState) {
+  if (state === 'UNSAFE' || state === 'VIOLATED') return '#f07858';
   if (state === 'UNKNOWN') return '#e7b861';
   if (state === 'BLOCKED') return '#bd8173';
-  if (state === 'SAFE') return '#51cbbb';
+  if (state === 'SATISFIED') return '#51cbbb';
   return '#70b5ff';
 }
 
-function ModuleLabel({ name, state, compact = false }: { name: string; state: State; compact?: boolean }) {
+function ModuleLabel({ name, state, compact = false }: { name: string; state: VisualState; compact?: boolean }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 640; canvas.height = 112;
@@ -33,28 +36,22 @@ function ModuleLabel({ name, state, compact = false }: { name: string; state: St
   return <sprite position={[0, compact ? 1.25 : 2.08, 0]} scale={compact ? [2.5, .44, 1] : [2.3, .42, 1]}><spriteMaterial map={texture} transparent depthWrite={false} /></sprite>;
 }
 
-function CameraRig({ overview, selected, modules, reducedMotion, zoom }: { overview: boolean; selected: string | null; modules: Module[]; reducedMotion: boolean; zoom: number }) {
-  const { camera, invalidate, size } = useThree();
-  const lookAt = useRef(new THREE.Vector3());
-  useEffect(() => { invalidate(); }, [overview, selected, modules, reducedMotion, zoom, invalidate]);
-  useFrame((_, delta) => {
-    const chosen = modules.find(m => m.id === selected);
-    const focus = overview ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3((chosen?.x ?? 0) * .29, -.23, (chosen?.z ?? 0) * .29);
-    const offset = overview ? new THREE.Vector3(14, 19, 26) : new THREE.Vector3(4.35, 6.1, 8.7);
-    const aspect = size.width / Math.max(size.height, 1);
-    const wideAdjustment = overview ? 1 : Math.max(.84, Math.min(1.03, 2 / aspect));
-    offset.multiplyScalar(zoom * wideAdjustment);
-    const destination = focus.clone().add(offset);
-    const ease = reducedMotion ? 1 : 1 - Math.exp(-delta * (overview ? 2.7 : 3.4));
-    camera.position.lerp(destination, ease);
-    lookAt.current.lerp(focus, ease);
-    camera.lookAt(lookAt.current);
-    if (camera.position.distanceTo(destination) > .015 || lookAt.current.distanceTo(focus) > .015) invalidate();
+function RenderMeter() {
+  const { gl, invalidate } = useThree();
+  useFrame(() => {
+    if (!import.meta.env.DEV || !new URLSearchParams(window.location.search).has('measure')) return;
+    const target = window as typeof window & { __faultlineRenderMetrics?: { frames: number[]; drawCalls: number[]; triangles: number[] } };
+    const sample = target.__faultlineRenderMetrics ??= { frames: [], drawCalls: [], triangles: [] };
+    sample.frames.push(performance.now());
+    sample.drawCalls.push(gl.info.render.calls);
+    sample.triangles.push(gl.info.render.triangles);
+    if (sample.frames.length > 600) { sample.frames.shift(); sample.drawCalls.shift(); sample.triangles.shift(); }
+    invalidate();
   });
   return null;
 }
 
-function Route({ from, to, color, thin = false }: { from: [number, number, number]; to: [number, number, number]; color: string; thin?: boolean }) {
+function Route({ from, to, color, thin = false, onSelect }: { from: [number, number, number]; to: [number, number, number]; color: string; thin?: boolean; onSelect: () => void }) {
   const geometry = useMemo(() => {
     const a = new THREE.Vector3(...from); const b = new THREE.Vector3(...to);
     const bendX = (a.x + b.x) / 2;
@@ -62,7 +59,7 @@ function Route({ from, to, color, thin = false }: { from: [number, number, numbe
     return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, false, 'centripetal'), 32, thin ? .035 : .06, 6, false);
   }, [from, to, thin]);
   useEffect(() => () => geometry.dispose(), [geometry]);
-  return <mesh geometry={geometry}><meshBasicMaterial color={color} toneMapped={false} transparent={thin} opacity={thin ? .7 : 1} /></mesh>;
+  return <mesh geometry={geometry} onClick={event => { event.stopPropagation(); onSelect(); }} onPointerOver={() => { document.body.style.cursor = 'pointer'; }} onPointerOut={() => { document.body.style.cursor = ''; }}><meshBasicMaterial color={color} toneMapped={false} transparent={thin} opacity={thin ? .7 : 1} /></mesh>;
 }
 
 function Environment() {
@@ -95,7 +92,7 @@ function ExecutionModule({ module, selected, onSelect, showLabel }: { module: Mo
     <ExecutionHardware kind={module.kind} color={color} blocked={module.state === 'BLOCKED' || module.state === 'UNSAFE'} />
     {selected && <pointLight position={[0, 2.5, 1.2]} intensity={4} distance={7} color="#91c5ed" />}
     {selected && <mesh position={[0, .015, 0]}><boxGeometry args={[3.32, .045, 2.54]} /><meshBasicMaterial color="#81c2ff" transparent opacity={.8} /></mesh>}
-    {(module.state === 'UNSAFE' || module.state === 'UNKNOWN') && <mesh position={[0, 2.33, 0]}><octahedronGeometry args={[.2]} /><meshBasicMaterial color={color} /></mesh>}
+    {(module.state === 'UNSAFE' || module.state === 'VIOLATED' || module.state === 'UNKNOWN') && <mesh position={[0, 2.33, 0]}><octahedronGeometry args={[.2]} /><meshBasicMaterial color={color} /></mesh>}
     {showLabel && <ModuleLabel name={module.name} state={module.state} />}
   </group>;
 }
@@ -109,7 +106,7 @@ function TopologyArc({ from, to, color }: { from: THREE.Vector3; to: THREE.Vecto
   return <mesh geometry={geometry}><meshBasicMaterial color={color} transparent opacity={.82} /></mesh>;
 }
 
-function TopologyOverview({ modules, workflow, onSelect }: { modules: Module[]; workflow: Workflow; onSelect: (id: string) => void }) {
+function TopologyOverview({ modules, workflow, testedGate, onSelect }: { modules: Module[]; workflow: Workflow; testedGate: TestedGate; onSelect: (id: string) => void }) {
   const positions = useMemo(() => new Map(modules.map((m, i) => [m.id, new THREE.Vector3((i % 2 ? 1 : -1) * (7 + Math.floor(i / 2) * 2), .2, (i < 2 ? -7 : 8))])), [modules]);
   const edges = workflow.steps.flatMap(s => [...s.executionGateIds, ...s.dependsOn].map(source => ({ source, target: s.id }))).filter(e => positions.has(e.source) && positions.has(e.target));
   const policyEdges = workflow.policyRules.flatMap(r => r.requiredConditionIds.map(source => ({ source, target: r.subjectStepId }))).filter(e => positions.has(e.source) && positions.has(e.target));
@@ -121,18 +118,18 @@ function TopologyOverview({ modules, workflow, onSelect }: { modules: Module[]; 
       <mesh position={[0, .48, 0]}><sphereGeometry args={[.1, 8, 8]} /><meshBasicMaterial color={color} /></mesh>
       <ModuleLabel name={m.name} state={m.state} compact />
     </group>;
-  })}{edges.map((e, i) => <TopologyArc key={`execution-${e.source}-${e.target}-${i}`} from={positions.get(e.source)!} to={positions.get(e.target)!} color="#3988c9" />)}{policyEdges.map((e, i) => <TopologyArc key={`policy-${e.source}-${e.target}-${i}`} from={positions.get(e.source)!} to={positions.get(e.target)!} color={modules.find(m => m.id === e.source)?.state === 'UNSAFE' ? '#f07858' : '#876fbc'} />)}</group>;
+  })}{edges.map((e, i) => <TopologyArc key={`execution-${e.source}-${e.target}-${i}`} from={positions.get(e.source)!} to={positions.get(e.target)!} color={testedGate?.conditionId === e.source && testedGate.stepId === e.target ? '#56c4b2' : '#3988c9'} />)}{policyEdges.map((e, i) => <TopologyArc key={`policy-${e.source}-${e.target}-${i}`} from={positions.get(e.source)!} to={positions.get(e.target)!} color={modules.find(m => m.id === e.source)?.state === 'VIOLATED' ? '#f07858' : '#876fbc'} />)}</group>;
 }
 
-function Installation({ modules, workflow, selected, onSelect, overview }: { modules: Module[]; workflow: Workflow; selected: string | null; onSelect: (id: string) => void; overview: boolean }) {
+function Installation({ modules, workflow, selected, testedGate, onSelect, overview }: { modules: Module[]; workflow: Workflow; selected: string | null; testedGate: TestedGate; onSelect: (id: string) => void; overview: boolean }) {
   const positions = new Map(modules.map(m => [m.id, m]));
   const links = workflow.steps.flatMap(s => [...s.executionGateIds, ...s.dependsOn].map(source => ({ source, target: s.id }))).filter(l => positions.has(l.source) && positions.has(l.target));
   const policyLinks = workflow.policyRules.flatMap(rule => rule.requiredConditionIds.map(source => ({ source, target: rule.subjectStepId }))).filter(l => positions.has(l.source) && positions.has(l.target));
   return <group><Environment />
     {modules.map(m => <ExecutionModule key={m.id} module={m} selected={selected === m.id} onSelect={onSelect} showLabel={!overview && selected === m.id} />)}
-    {links.map((l, i) => { const a = positions.get(l.source)!; const b = positions.get(l.target)!; const sameColumn = Math.abs(a.x - b.x) < .1; return <Route key={`execution-${l.source}-${l.target}-${i}`} from={[a.x + 1.55, .54, a.z - .54]} to={[b.x + (sameColumn ? 1.55 : -1.55), .54, b.z - .54]} color={selected === l.source || selected === l.target ? '#a0dbff' : '#56aee7'} />; })}
-    {policyLinks.map((l, i) => { const a = positions.get(l.source)!; const b = positions.get(l.target)!; const sameColumn = Math.abs(a.x - b.x) < .1; return <Route key={`policy-${l.source}-${l.target}-${i}`} from={[a.x + 1.55, .54, a.z + .54]} to={[b.x + (sameColumn ? 1.55 : -1.55), .54, b.z + .54]} color={a.state === 'UNSAFE' || a.state === 'BLOCKED' ? '#f07858' : '#796ca5'} thin />; })}
-    {overview && <TopologyOverview modules={modules} workflow={workflow} onSelect={onSelect} />}
+    {links.map((l, i) => { const a = positions.get(l.source)!; const b = positions.get(l.target)!; const sameColumn = Math.abs(a.x - b.x) < .1; const tested = testedGate?.conditionId === l.source && testedGate.stepId === l.target; return <Route key={`execution-${l.source}-${l.target}-${i}`} from={[a.x + 1.55, .54, a.z - .54]} to={[b.x + (sameColumn ? 1.55 : -1.55), .54, b.z - .54]} color={tested ? '#56c4b2' : selected === l.source || selected === l.target ? '#a0dbff' : '#56aee7'} onSelect={() => onSelect(l.target)} />; })}
+    {policyLinks.map((l, i) => { const a = positions.get(l.source)!; const b = positions.get(l.target)!; const sameColumn = Math.abs(a.x - b.x) < .1; return <Route key={`policy-${l.source}-${l.target}-${i}`} from={[a.x + 1.55, .54, a.z + .54]} to={[b.x + (sameColumn ? 1.55 : -1.55), .54, b.z + .54]} color={a.state === 'VIOLATED' ? '#f07858' : '#796ca5'} thin onSelect={() => onSelect(l.source)} />; })}
+    {overview && <TopologyOverview modules={modules} workflow={workflow} testedGate={testedGate} onSelect={onSelect} />}
   </group>;
 }
 
@@ -147,29 +144,27 @@ function moduleKind(name: string, actionType?: Workflow['steps'][number]['action
   return actionType ? 'STEP' : 'CONDITION';
 }
 
-export default function SpatialScene({ workflow, result, selected, onSelect, overview, reducedMotion, zoom }: Props) {
+export default function SpatialScene({ workflow, result, intervention, selected, testedGate, onSelect, cameraState, reducedMotion, zoom }: Props) {
   const [failed, setFailed] = useState(false);
   const modules = useMemo<Module[]>(() => {
     const items = [...workflow.conditions.map(c => ({ id: c.id, name: c.name, actionType: undefined })), ...workflow.steps.map(s => ({ id: s.id, name: s.name, actionType: s.actionType }))];
     return items.map((item, i) => {
-      const condition = workflow.conditions.find(c => c.id === item.id);
-      const step = result?.stepResults.find(s => s.stepId === item.id);
-      const violated = condition && result?.affectedNodeIds.includes(item.id);
-      const state: State = violated ? 'UNSAFE' : condition?.observedValue === null || step?.eligibility === 'UNKNOWN' ? 'UNKNOWN' : condition ? condition.observedValue === condition.expectedValue ? 'SAFE' : 'BLOCKED' : step?.eligibility === 'VIOLATED' ? 'BLOCKED' : step?.executes ? 'SAFE' : 'READY';
-      return { id: item.id, name: item.name, x: (i % 2) * 3.7 - 1.85, z: Math.floor(i / 2) * 3.2 - 1.6, state, kind: moduleKind(item.name, item.actionType) };
+      return { id: item.id, name: item.name, x: (i % 2) * 3.7 - 1.85, z: Math.floor(i / 2) * 3.2 - 1.6, state: visualState(workflow, result, intervention, item.id), kind: moduleKind(item.name, item.actionType) };
     });
-  }, [workflow, result]);
-  if (failed) return <div className="scene-fallback" role="list" aria-label="Workflow modules">{modules.map(m => <button role="listitem" key={m.id} onClick={() => onSelect(m.id)}>{m.name}<span>{m.state}</span></button>)}</div>;
-  return <div className="spatial-scene" aria-label="Interactive workflow execution lattice">
-    <Canvas frameloop="demand" camera={{ position: [12, 18, 24], fov: 36, near: .1, far: 200 }} dpr={1} gl={{ antialias: true, powerPreference: 'low-power' }} onCreated={({ gl }) => gl.domElement.addEventListener('webglcontextlost', () => setFailed(true))}>
+  }, [workflow, result, intervention]);
+  if (failed) return <WorkflowMap workflow={workflow} result={result} intervention={intervention} selected={selected} testedGate={testedGate} onSelect={onSelect} />;
+  const overview = cameraState === 'OVERVIEW' || cameraState === 'RETURN';
+  return <div className="spatial-scene" aria-label="Interactive workflow execution lattice" data-camera-state={cameraState}>
+    <Canvas frameloop="demand" camera={{ position: [12, 18, 24], fov: 36, near: .1, far: 200 }} dpr={window.innerWidth > 900 ? .8 : 1} gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => gl.domElement.addEventListener('webglcontextlost', () => setFailed(true))}>
       <color attach="background" args={['#0a1424']} /><fog attach="fog" args={['#0a1424', 32, 85]} />
       <hemisphereLight args={['#9bb8d4', '#0a1421', .72]} />
       <ambientLight intensity={.35} color="#849fbb" />
       <directionalLight position={[5, 12, 9]} intensity={2.1} color="#d2e4f2" />
       <directionalLight position={[-8, 6, -5]} intensity={1.35} color="#4b91c7" />
       <pointLight position={[1, 3, -2]} intensity={4.5} distance={12} color="#578fbc" />
-      <CameraRig overview={overview} selected={selected} modules={modules} reducedMotion={reducedMotion} zoom={zoom} />
-      <Installation modules={modules} workflow={workflow} selected={selected} onSelect={onSelect} overview={overview} />
+      <CameraDirector state={cameraState} selected={selected} modules={modules} reducedMotion={reducedMotion} zoom={zoom} />
+      <RenderMeter />
+      <Installation modules={modules} workflow={workflow} selected={selected} testedGate={testedGate} onSelect={onSelect} overview={overview} />
     </Canvas>
   </div>;
 }

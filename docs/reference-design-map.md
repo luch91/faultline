@@ -130,7 +130,7 @@ The supplied H.264 video is 640 by 512 pixels, 30 frames per second, and 55.167 
 | Re-entry and safeguard comparison | 40 to 54 seconds | Assembly and approach peak near 41.5 to 47.5 seconds, then steady inspection | Focus and Replay select the tested result without a mandatory cinematic wait. |
 | Final departure | 54 to 55.167 seconds | Short renewed camera motion | Overview remains available. |
 
-The source moves with a low-high-low motion envelope across each approach. The implementation interpolates toward fixed oblique targets each animation frame with exponential deceleration, so it captures the settling character while remaining interruptible. The focus offset is approximately `(4.35, 6.1, 8.7)` from the selected module and the wide offset approximately `(14, 19, 26)` from the installation center, adjusted for viewport width and user zoom. Reduced-motion mode moves immediately.
+The source moves with a low-high-low motion envelope across each approach. The implementation interpolates toward fixed oblique targets each animation frame with smoothstep easing, so it captures the settling character while remaining interruptible. The focus offset is approximately `(4.35, 6.1, 8.7)` from the selected module and the wide offset approximately `(14, 19, 26)` from the installation center, adjusted for viewport width and user zoom. Reduced-motion mode moves immediately.
 
 ## F1 and F2 review checkpoint
 
@@ -143,3 +143,21 @@ The test runner has three diagnostic cartridges and a scan bridge. The approval 
 The current review screenshots are local browser captures at `C:\Users\user\faultline-visual-evidence`. The `before` directory contains the previously deployed visual preview. The `f1-desktop.png`, `f1-wide.png`, and `f2-*` files contain this F1/F2 revision. The close views crop only the implementation screenshots, never the source frames.
 
 Remaining differences for owner review: the reference has a denser installation and richer distant geography; Faultline keeps four real workflow entities and abstract architectural scenery. The diagnostic rail and trace still use the earlier panel layout. Detailed camera choreography, mobile composition, and full UI integration remain outside this checkpoint. No visual approval is inferred from passing functional checks.
+
+## F3 and F4 implementation review
+
+The selected module card now separates the observed condition, policy rule, execution decision, verified source spans, and tested gate. When approval is absent after repair, approval remains `VIOLATED`, deployment becomes `BLOCKED`, and the overall outcome is `SAFE_BLOCK`. The experiment rail reports this distinction. The 2D fallback lists the same real entities and exposes policy relationships separately from execution gates. The repaired scenario labels the added approval link as a tested gate, and the 3D route uses teal for that verified repair. On mobile, the scene remains unobstructed above a full-height inspection panel.
+
+The camera director has named states for overview, approach, installation, module focus, counterfactual, safeguard, and return. It interpolates from the current camera position and target, so another selection or overview command interrupts the current move. Reference frames 005 to 012 take about 8 seconds for the first approach. Faultline uses a 1.05 second approach and a 0.85 second installation settle. The source's 26 to 33 second departure is condensed to a 1.2 second return. These shorter timings preserve direct control rather than forcing the 55 second sequence. Reduced-motion navigation settles immediately.
+
+| Source frame | Local browser capture | Comparison |
+| --- | --- | --- |
+| 001, wide topology | `f4-local/01-overview-wide.png` | Both use a high oblique dark field and thin paths. Faultline has four actual workflow markers instead of the reference's dense site field. |
+| 005 to 012, approach | `f4-local/02-approach-wide.png` | The camera moves continuously toward the same installation. The reference traverses a wider environment and runs longer. |
+| 021, operational inspection | `f4-local/03-inspection-wide.png` | The installation dominates the usable scene, with compact left diagnostics and selected-object detail. Four distinct mechanical modules replace the dense solar array. |
+| 050, violation and repair | `f4-local/05-unsafe-wide.png`, `f4-local/06-safeguard-wide.png` | Coral marks the failed approval and the unsafe execution path. The repaired step is blocked while the approval condition remains violated. The reference has a floating warning card; Faultline's card contains evaluator and source evidence. |
+| 055, return | `f4-local/08-return-wide.png` | The camera restores the wide topology and retains the selected result. |
+
+The capture names above refer to actual local browser evidence held outside the repository in `C:\Users\user\faultline-visual-evidence`. The real browser motion recording is `f4-local/f4-motion-wide.webm`. The owner supplied reference frames and video remain outside the deployed build.
+
+The continuous-render local benchmark used Chrome on Intel HD Graphics P630 with Direct3D 11. At 1440 by 900, measured rates were 28.1, 36.7, and 26.3 frames per second for return, approach, and module focus. At 1827 by 864, they were 7.9, 3.5, and 3.2. At 360 by 780, they were 21.8, 28.2, and 32.7. Draw calls were about 309 to 362 per frame. These are single-machine measurements and the wide viewport is below the desired smoothness. Idle rendering remains demand-driven, and a functional 2D fallback is available. The benchmark mode forces continuous frames only in local development.
