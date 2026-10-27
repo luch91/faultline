@@ -106,21 +106,26 @@ function RouteField({ routes }: { routes: AtlasRoute[] }) {
 
 function ArcInstances({ items, color }: { items: Array<{ x: number; y: number; scale: number }>; color: string }) {
   const ref = useRef<THREE.InstancedMesh>(null);
+  const shellRef = useRef<THREE.InstancedMesh>(null);
   const geometry = useMemo(() => new THREE.TorusGeometry(1.35, .11, 7, 24, Math.PI), []);
+  const shellGeometry = useMemo(() => new THREE.SphereGeometry(1.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), []);
   const material = useMemo(() => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .95, toneMapped: false }), [color]);
+  const shellMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#29415f', emissive: '#10233b', emissiveIntensity: .28, roughness: .77, metalness: .15, transparent: true, opacity: .72, side: THREE.DoubleSide }), []);
   useEffect(() => {
-    const mesh = ref.current; if (!mesh) return;
+    const mesh = ref.current; const shell = shellRef.current; if (!mesh || !shell) return;
     const object = new THREE.Object3D();
     items.forEach((item, index) => {
       const position = world(item.x, item.y);
       object.position.set(position.x, position.y + .13, position.z);
       object.scale.setScalar(item.scale); object.updateMatrix();
       mesh.setMatrixAt(index, object.matrix);
+      shell.setMatrixAt(index, object.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
+    shell.instanceMatrix.needsUpdate = true;
   }, [items]);
-  useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
-  return <instancedMesh ref={ref} args={[geometry, material, items.length]} frustumCulled={false} />;
+  useEffect(() => () => { geometry.dispose(); shellGeometry.dispose(); material.dispose(); shellMaterial.dispose(); }, [geometry, shellGeometry, material, shellMaterial]);
+  return <group><instancedMesh ref={shellRef} args={[shellGeometry, shellMaterial, items.length]} frustumCulled={false} /><instancedMesh ref={ref} args={[geometry, material, items.length]} frustumCulled={false} /></group>;
 }
 
 function EntityMarker({ point, selected, onSelect }: { point: AtlasPoint; selected: boolean; onSelect: (id: string) => void }) {
@@ -144,6 +149,7 @@ function EntityMarker({ point, selected, onSelect }: { point: AtlasPoint; select
   useEffect(() => () => { label.spriteMaterial.dispose(); label.texture.dispose(); }, [label]);
   return <group position={[position.x, position.y, position.z]} onClick={event => { event.stopPropagation(); onSelect(point.id); }} onPointerOver={() => { document.body.style.cursor = 'pointer'; }} onPointerOut={() => { document.body.style.cursor = ''; }}>
     <mesh position={[0, .05, 0]} rotation={[-Math.PI / 2, 0, 0]}><cylinderGeometry args={[.17, .23, .11, 10]} /><meshStandardMaterial color="#263d59" roughness={.7} metalness={.2} /></mesh>
+    <mesh position={[0, .06, 0]}><sphereGeometry args={[1.1, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#29435e" emissive="#10253e" emissiveIntensity={.3} metalness={.2} roughness={.67} transparent opacity={.78} side={THREE.DoubleSide} /></mesh>
     <mesh position={[0, .06, 0]} material={material} scale={selected ? 1.2 : 1}><torusGeometry args={[1.3, .12, 8, 28, Math.PI]} /></mesh>
     <mesh position={[0, .09, 0]}><sphereGeometry args={[.09, 8, 8]} /><meshBasicMaterial color={point.color} toneMapped={false} /></mesh>
     <sprite position={[0, 1.35, 0]} scale={[2.9, .58, 1]} material={label.spriteMaterial} />
