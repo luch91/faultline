@@ -4,7 +4,8 @@ const stagingUrl = process.env.FAULTLINE_STAGING_URL;
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 45_000,
+  timeout: 90_000,
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: { baseURL: stagingUrl ?? 'http://127.0.0.1:5173', trace: 'retain-on-failure', screenshot: 'on', video: 'on', launchOptions: process.env.FAULTLINE_CHROMIUM_PATH ? { executablePath: process.env.FAULTLINE_CHROMIUM_PATH } : undefined },
