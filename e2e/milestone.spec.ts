@@ -127,6 +127,17 @@ test('camera navigation respects reduced motion', async ({ page }) => {
 test('Atlas, Graph, and 3D preserve the selected workflow entity', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('main', { name: 'Faultline Atlas' })).toBeVisible();
+  if (test.info().project.name === 'desktop') {
+    await expect(page.locator('.atlas-3d canvas')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Select Human approval present' }).click();
+    await expect(page.locator('.atlas-field-foot')).toContainText('Human approval present');
+    await page.getByRole('button', { name: '2D MAP' }).click();
+    await expect(page.locator('.atlas-visual svg')).toBeVisible();
+    await page.getByRole('button', { name: '3D MAP' }).click();
+    await expect(page.locator('.atlas-3d canvas')).toBeVisible({ timeout: 30_000 });
+  } else {
+    await expect(page.locator('.atlas-visual svg')).toBeVisible();
+  }
   await page.getByRole('button', { name: 'Open investigation' }).click();
   await expect(page.locator('.outcome-chip')).toHaveText('SAFE_EXECUTION');
   await page.locator('.react-flow__node').filter({ hasText: 'Human approval present' }).click();
@@ -163,6 +174,8 @@ test('2D navigation appears when WebGL is unavailable', async ({ page }) => {
     } as typeof HTMLCanvasElement.prototype.getContext;
   });
   await page.goto('/');
+  await expect(page.locator('.atlas-visual svg')).toBeVisible();
+  await expect(page.locator('.atlas-3d canvas')).toHaveCount(0);
   await page.getByRole('button', { name: 'Open investigation' }).click();
   await expect(page.locator('.workflow-graph')).toBeVisible();
   await page.getByRole('button', { name: '3D', exact: true }).click();
