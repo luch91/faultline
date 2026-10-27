@@ -1,7 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Workflow, Intervention, EvaluationResult } from '@faultline/contracts';
 
 const SpatialScene = lazy(() => import('./SpatialScene'));
+class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
 type Investigation = { investigationId?: string; baseline: EvaluationResult; intervention: Intervention; failure: EvaluationResult; verification: { repaired: EvaluationResult; safeguard: { stepId: string; conditionId: string }; resolved: boolean } | null; trace: Array<{ id: string; tool: string; status: string; arguments: unknown; result: unknown }>; model: { id: string | null; usage: unknown } };
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 async function call<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -62,6 +67,7 @@ export default function FaultlineApp() {
   const selectedRule = workflow?.policyRules.find(r => r.subjectStepId === selected || r.requiredConditionIds.includes(selected ?? ''));
   const entities = useMemo(() => workflow ? [...workflow.conditions, ...workflow.steps] : [], [workflow]);
   const outcome = activeResult?.outcome ?? 'AWAITING EVALUATION';
+  const fallback = <div className="scene-fallback" role="list" aria-label="Workflow modules">{entities.map(e => <button role="listitem" key={e.id} onClick={() => setSelected(e.id)}>{e.name}<span>{e.id}</span></button>)}</div>;
   function selectCondition(id: string) { const c = workflow?.conditions.find(x => x.id === id); if (c) setIntervention({ id: `user-${c.id}`, targetConditionId: c.id, originalValue: c.observedValue, replacementValue: c.observedValue === true ? false : true, reason: 'Manual counterfactual', proposedBy: 'USER', validated: true }); }
   return <div className="app visual-app">
     <header className="topbar"><div className="brand"><span className="brand-mark">F/</span> FAULTLINE <span className="version">EXECUTION LAB</span></div><div className="top-context">{workflow?.title ?? 'WORKFLOW UNLOADED'} <span className="header-status"><span className="status-dot" /> {busy || 'SIMULATOR READY'}</span></div></header>
@@ -78,7 +84,7 @@ export default function FaultlineApp() {
       <main className="visual-main"><div className="scene-header"><div><span className="breadcrumb">WORKFLOW / {tab} / {selected ?? 'OVERVIEW'}</span><h2>{selectedCondition?.name ?? selectedStep?.name ?? 'Execution Lattice'}</h2></div><div className={`outcome-chip ${outcome === 'UNSAFE_EXECUTION' ? 'danger' : ''}`}>{outcome}</div></div>
         {error && <div className="error" role="alert">{error}</div>}
         <div className="scene-shell"><div className="scene-control top"><button onClick={() => setOverview(true)}>Overview</button><button onClick={() => setOverview(false)}>Focus</button><button onClick={() => setSceneMode(!sceneMode)}>{sceneMode ? '2D list' : '3D scene'}</button>{controller && <button onClick={() => controller.abort()}>Cancel</button>}</div>
-          {workflow && sceneMode ? <Suspense fallback={<div className="scene-loading">Loading execution lattice</div>}><SpatialScene workflow={workflow} result={activeResult} selected={selected} onSelect={id => { setSelected(id); setOverview(false); }} overview={overview} reducedMotion={reducedMotion} /></Suspense> : <div className="scene-fallback" role="list" aria-label="Workflow modules">{entities.map(e => <button role="listitem" key={e.id} onClick={() => setSelected(e.id)}>{e.name}<span>{e.id}</span></button>)}</div>}
+          {workflow && sceneMode ? <SceneBoundary fallback={fallback}><Suspense fallback={<div className="scene-loading">Loading execution lattice</div>}><SpatialScene workflow={workflow} result={activeResult} selected={selected} onSelect={id => { setSelected(id); setOverview(false); }} overview={overview} reducedMotion={reducedMotion} /></Suspense></SceneBoundary> : fallback}
           <div className="scene-legend"><span><i className="blue" /> EXECUTION</span><span><i className="teal" /> SATISFIED</span><span><i className="coral" /> VIOLATED</span><span><i className="amber" /> UNKNOWN</span></div>
           <div className="selection-card"><span className="section-head">SELECTED MODULE</span><strong>{selectedCondition?.name ?? selectedStep?.name ?? 'Select a module'}</strong>{selectedStep && <small>Execution gates: {selectedStep.executionGateIds.join(', ') || 'None'}</small>}{selectedRule && <small>Policy: {selectedRule.requiredConditionIds.join(', ')}</small>}{(selectedCondition?.sourceSpans ?? selectedStep?.sourceSpans ?? []).map((s, i) => <blockquote key={i}>{s.excerpt}<small>Source {s.startOffset} to {s.endOffset}</small></blockquote>)}</div>
         </div>

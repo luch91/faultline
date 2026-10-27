@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { missingApproval } from '../fixtures/workflows/missing-approval';
+import { evaluate } from '../packages/simulator/src';
 
 test('Missing Approval journey', async ({ page }) => {
   const baselineResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/experiments/run') && response.request().postData()?.includes('"intervention"') === false);
@@ -54,4 +56,22 @@ test('API failure is visible', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('alert')).toContainText('Sample service unavailable');
   await page.screenshot({ path: `test-results/error-${test.info().project.name}.png`, fullPage: true });
+});
+
+test('2D navigation appears when WebGL is unavailable', async ({ page }) => {
+  const baseline = await evaluate(missingApproval);
+  await page.route('**/api/v1/samples', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ samples: [missingApproval] }) }));
+  await page.route('**/api/v1/budget', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ liveModelEnabled: false }) }));
+  await page.route('**/api/v1/experiments/run', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ kind: 'BASELINE', result: baseline }) }));
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') return null;
+      return original.call(this, type, ...args);
+    } as typeof HTMLCanvasElement.prototype.getContext;
+  });
+  await page.goto('/');
+  await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible();
+  await page.locator('.scene-fallback button').filter({ hasText: 'Human approval present' }).click();
+  await expect(page.locator('.selection-card')).toContainText('Human approval present');
 });
