@@ -1,5 +1,5 @@
-import { Canvas } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 
 export type AtlasPoint = { id: string; name: string; kind: string; x: number; y: number; color: string };
@@ -111,11 +111,11 @@ function ArcInstances({ items, color }: { items: Array<{ x: number; y: number; s
   const coreRef = useRef<THREE.InstancedMesh>(null);
   const geometry = useMemo(() => new THREE.TorusGeometry(1.35, .14, 7, 24, Math.PI), []);
   const glowGeometry = useMemo(() => new THREE.TorusGeometry(1.35, .26, 6, 20, Math.PI), []);
-  const coreGeometry = useMemo(() => new THREE.SphereGeometry(.13, 8, 6), []);
-  const shellGeometry = useMemo(() => new THREE.SphereGeometry(1.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), []);
+  const coreGeometry = useMemo(() => new THREE.SphereGeometry(.18, 8, 6), []);
+  const shellGeometry = useMemo(() => new THREE.SphereGeometry(.95, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), []);
   const material = useMemo(() => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .95, toneMapped: false }), [color]);
   const glowMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .2, toneMapped: false, depthWrite: false }), [color]);
-  const shellMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#29415f', emissive: '#10233b', emissiveIntensity: .2, roughness: .77, metalness: .15, transparent: true, opacity: .54, side: THREE.DoubleSide }), []);
+  const shellMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#29415f', emissive: '#10233b', emissiveIntensity: .2, roughness: .77, metalness: .15, transparent: true, opacity: .44, side: THREE.DoubleSide }), []);
   useEffect(() => {
     const mesh = ref.current; const shell = shellRef.current; const glow = glowRef.current; const core = coreRef.current; if (!mesh || !shell || !glow || !core) return;
     const object = new THREE.Object3D();
@@ -171,9 +171,16 @@ function EntityMarker({ point, selected, onSelect }: { point: AtlasPoint; select
 function EvidenceMarker({ point }: { point: AtlasEvidence }) {
   const position = world(point.x, point.y);
   return <group position={[position.x, position.y, position.z]}>
-    <mesh position={[0, .38, 0]}><coneGeometry args={[.17, .72, 4]} /><meshStandardMaterial color="#2e8f9e" emissive="#38a3b0" emissiveIntensity={.65} metalness={.2} roughness={.5} transparent opacity={.78} /></mesh>
-    <mesh position={[0, .03, 0]}><sphereGeometry args={[.06, 6, 6]} /><meshBasicMaterial color="#75ccd0" /></mesh>
+    <mesh position={[0, 1.04, 0]}><coneGeometry args={[.31, 2, 4]} /><meshStandardMaterial color="#48aebb" emissive="#38a3b0" emissiveIntensity={.8} metalness={.2} roughness={.5} transparent opacity={.86} /></mesh>
+    <mesh position={[0, .04, 0]}><sphereGeometry args={[.1, 6, 6]} /><meshBasicMaterial color="#75ccd0" /></mesh>
   </group>;
+}
+
+function MarkerField({ children }: { children: ReactNode }) {
+  const { size } = useThree();
+  const aspect = size.width / Math.max(1, size.height);
+  const spread = THREE.MathUtils.clamp(1 + (aspect - 1.4) * .55, 1, 1.34);
+  return <group scale={[spread, 1, 1]}>{children}</group>;
 }
 
 function GroundRoutes({ routes }: { routes: AtlasRoute[] }) {
@@ -197,10 +204,12 @@ export default function AtlasScene({ points, routes, evidence, selected, onSelec
       <directionalLight position={[-8, 14, 6]} intensity={1.7} color="#94b4d5" />
       <directionalLight position={[12, 7, -10]} intensity={.6} color="#456d9b" />
       <Terrain />
-      <GroundRoutes routes={routes} />
-      <RouteField routes={routes} />
-      {evidence.map(point => <EvidenceMarker key={point.id} point={point} />)}
-      {points.map(point => <EntityMarker key={point.id} point={point} selected={selected === point.id} onSelect={onSelect} />)}
+      <MarkerField>
+        <GroundRoutes routes={routes} />
+        <RouteField routes={routes} />
+        {evidence.map(point => <EvidenceMarker key={point.id} point={point} />)}
+        {points.map(point => <EntityMarker key={point.id} point={point} selected={selected === point.id} onSelect={onSelect} />)}
+      </MarkerField>
     </Canvas>
   </div>;
 }
