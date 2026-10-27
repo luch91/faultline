@@ -7,6 +7,10 @@
 
 Faultline tests declared deployment policy against the conditions an automated workflow actually checks.
 
+## Staging preview
+
+[Open the deterministic Faultline preview](https://faultline-web-preview.pages.dev). Live Meta inference is disabled on this preview. The Worker is at [faultline-api-preview.judithorluchee.workers.dev](https://faultline-api-preview.judithorluchee.workers.dev/healthz).
+
 ## Product demonstration
 
 The included Missing Approval fixture declares human approval as mandatory but leaves it out of the execution gate. Removing approval produces `UNSAFE_EXECUTION`. Adding the approval gate to a copied graph produces `SAFE_BLOCK`.
@@ -38,6 +42,8 @@ Use Node 22 and pnpm 10. Run `pnpm install` in the repository root. Copy `.env.e
 ## Commands
 
 `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm e2e`, `pnpm audit --audit-level high`, `pnpm check:content`, `pnpm check:secrets`. Playwright E2E starts a local Worker and frontend and runs without Meta inference.
+
+Set `FAULTLINE_STAGING_URL=https://faultline-web-preview.pages.dev` before `pnpm e2e` to run the same browser journey against staging without starting local servers.
 
 ## Security and limitations
 
