@@ -13,7 +13,7 @@ The included Missing Approval fixture declares human approval as mandatory but l
 
 ## Approach
 
-The simulator evaluates policy rules and execution gates independently. Meta Muse Spark is used for evidence-linked workflow extraction and a bounded investigation tool call when credited Standard-mode access is configured. Model output cannot override simulator results. The frontend lets a user correct observations and gates before simulation.
+The simulator evaluates policy rules and execution gates independently. Meta Muse Spark is used for evidence-linked workflow extraction and a bounded two-turn investigation when credited Standard-mode access is configured. Model output cannot override simulator results. The frontend lets a user correct observations and gates before simulation.
 
 ## Architecture
 
@@ -29,7 +29,7 @@ Model extraction is accepted only when every cited excerpt matches the submitted
 
 ## Meta status
 
-Live Meta extraction and the two-turn tool investigation have been tested locally against the credited Standard-mode account. The model called `run_counterfactual`, received a simulator result, then called `propose_safeguard`. The local ledger records estimated or actual API usage; it has not been reconciled against Meta Billing. Eligible open-weight integration is not available in this milestone.
+Live Meta extraction and the two-turn tool investigation have been tested locally against the credited account. The model called `run_counterfactual`, received a simulator result, then called `propose_safeguard`. New investigation certificates verify server-side model provenance before export. The local ledger records reserved, provider-reported, and unknown usage separately; it has not been reconciled against Meta Billing. Eligible open-weight integration is not available in this milestone.
 
 ## Install
 
@@ -37,11 +37,11 @@ Use Node 22 and pnpm 10. Run `pnpm install` in the repository root. Copy `.env.e
 
 ## Commands
 
-`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm check:content`, `pnpm check:secrets`.
+`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm e2e`, `pnpm audit --audit-level high`, `pnpm check:content`, `pnpm check:secrets`. Playwright E2E starts a local Worker and frontend and runs without Meta inference.
 
 ## Security and limitations
 
-Faultline never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Public rate limiting and the complete multi-tool catalogue are still under development. Do not enable public live inference until those controls are verified.
+Faultline never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Request and model-call limits are in place, but public live inference remains disabled pending reconciliation and deployment review. The complete multi-tool catalogue remains outside this milestone.
 
 ## Hackathon contribution
 
