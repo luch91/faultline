@@ -89,7 +89,7 @@
   .visual-app .scenario-control button { font-size: 9px; padding: 6px; }
   .visual-app .timeline-strip { min-height: 108px; }
   .visual-app .module-items { scrollbar-color: #628cad #18324d; scrollbar-width: thin; }
-  .visual-app .dependency-map { height: 430px; padding: 80px 10px 12px; scrollbar-color: #628cad #18324d; scrollbar-width: thin; }
+  .visual-app .dependency-map { height: 575px; padding: 80px 10px 12px; scrollbar-color: #628cad #18324d; scrollbar-width: thin; }
   .visual-app .scene-shell:has(.dependency-map) .scene-legend { display: none; }
   .visual-app .dependency-map-head { display: block; }
   .visual-app .dependency-map-head span { display: block; margin-top: 5px; }
