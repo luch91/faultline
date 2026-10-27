@@ -159,7 +159,13 @@ test('Atlas refresh keeps the 2D map hidden in 3D mode', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.atlas-3d canvas')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.atlas-visual svg')).toBeHidden();
-  await page.reload();
+  await page.route('**/api/v1/samples', async route => {
+    await new Promise(resolve => setTimeout(resolve, 1800));
+    await route.continue();
+  });
+  await page.reload({ waitUntil: 'commit' });
+  await expect(page.locator('.atlas-initial-loading')).toBeVisible();
+  await expect(page.locator('.atlas')).toHaveCount(0);
   await expect(page.locator('.atlas-3d canvas')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.atlas-visual svg')).toBeHidden();
   await expect(page.locator('.atlas-loading')).toBeHidden();
