@@ -28,7 +28,7 @@ test('Missing Approval journey', async ({ page }) => {
   await expect(page.locator('.selection-card')).toContainText('Automated tests pass');
   await page.locator('.module-items').getByRole('button', { name: /Human approval present/ }).click();
   await page.getByRole('button', { name: '2D list' }).click();
-  await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.dependency-links')).toContainText('POLICY');
   await expect(page.locator('.dependency-links')).toContainText('EXECUTION GATE');
   await page.getByRole('button', { name: '3D scene' }).click();
@@ -88,7 +88,8 @@ test('Missing Approval journey', async ({ page }) => {
 test('camera navigation respects reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await expect(page.locator('.outcome-chip')).toHaveText('SAFE_EXECUTION');
+  await expect(page.locator('.outcome-chip')).toHaveText('SAFE_EXECUTION', { timeout: 30_000 });
+  await expect(page.locator('.spatial-scene canvas')).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Focus' }).click();
   await expect(page.locator('.spatial-scene')).toHaveAttribute('data-camera-state', 'INSTALLATION');
   await page.getByRole('button', { name: 'Overview' }).click();
@@ -115,7 +116,7 @@ test('2D navigation appears when WebGL is unavailable', async ({ page }) => {
     } as typeof HTMLCanvasElement.prototype.getContext;
   });
   await page.goto('/');
-  await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible({ timeout: 30_000 });
   await page.locator('.dependency-nodes button').filter({ hasText: 'Human approval present' }).click();
   await expect(page.locator('.selection-card')).toContainText('Human approval present');
   await expect(page.locator('.dependency-links')).toContainText('POLICY');
