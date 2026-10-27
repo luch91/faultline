@@ -154,6 +154,17 @@ test('Atlas, Graph, and 3D preserve the selected workflow entity', async ({ page
   await expect(page.locator('.outcome-chip')).toHaveText('SAFE_EXECUTION');
 });
 
+test('Atlas refresh keeps the 2D map hidden in 3D mode', async ({ page }) => {
+  test.skip(test.info().project.name !== 'desktop');
+  await page.goto('/');
+  await expect(page.locator('.atlas-3d canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.atlas-visual svg')).toBeHidden();
+  await page.reload();
+  await expect(page.locator('.atlas-3d canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.atlas-visual svg')).toBeHidden();
+  await expect(page.locator('.atlas-loading')).toBeHidden();
+});
+
 test('API failure is visible', async ({ page }) => {
   await page.route('**/api/v1/samples', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Sample service unavailable' }) }));
   await page.goto('/');
