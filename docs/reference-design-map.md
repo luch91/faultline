@@ -111,7 +111,7 @@ The reference contains FuseLab Creative branding and likely proprietary artwork.
 
 ## Current preview differences
 
-- The overview camera zooms away from one workflow installation. It does not yet reproduce the reference's dense map and city traversal.
+- The overview shows the actual workflow entities and dependencies around the installation. It does not yet reproduce the reference's dense map and city traversal.
 - The sample workflow has four real entities, so the lattice has four labeled banks. The reference contains a denser physical array. No extra workflow entities are invented to fill it.
 - The preview uses compact state rows in place of the reference's continuous trend plot. Those rows are derived from the baseline, counterfactual, and safeguard results.
 - The original video was unavailable locally, so exact transition duration and easing could not be measured from the still frames.

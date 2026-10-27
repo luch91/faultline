@@ -69,6 +69,34 @@ function ModuleLabel({ name, state }: { name: string; state: Module['state'] }) 
   return <sprite position={[0, 1.45, 0]} scale={[2.5, .39, 1]}><spriteMaterial map={texture} transparent depthWrite={false} /></sprite>;
 }
 
+function TopologyArc({ from, to, color }: { from: THREE.Vector3; to: THREE.Vector3; color: string }) {
+  const geometry = useMemo(() => {
+    const center = from.clone().lerp(to, .5).add(new THREE.Vector3(0, 2.6, 0));
+    return new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(from, center, to), 24, .026, 5, false);
+  }, [from, to]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return <mesh geometry={geometry}><meshBasicMaterial color={color} transparent opacity={.78} /></mesh>;
+}
+
+function TopologyOverview({ modules, workflow, onSelect }: { modules: Module[]; workflow: Workflow; onSelect: (id: string) => void }) {
+  const positions = useMemo(() => new Map(modules.map((m, i) => [m.id, new THREE.Vector3((i % 2 ? 1 : -1) * (7 + Math.floor(i / 2) * 2), .15, (i < 2 ? -7 : 8))])), [modules]);
+  const edges = workflow.steps.flatMap(s => [...s.executionGateIds, ...s.dependsOn].map(source => ({ source, target: s.id }))).filter(e => positions.has(e.source) && positions.has(e.target));
+  return <group>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.11, 0]}><planeGeometry args={[80, 80]} /><meshStandardMaterial color="#0c1a2f" roughness={1} /></mesh>
+    {modules.map(m => {
+      const p = positions.get(m.id)!;
+      const color = m.state === 'UNSAFE' ? '#ed866e' : m.state === 'UNKNOWN' ? '#ddb96f' : '#6baee8';
+      return <group key={`topology-${m.id}`} position={p} onClick={e => { e.stopPropagation(); onSelect(m.id); }} onPointerOver={() => { document.body.style.cursor = 'pointer'; }} onPointerOut={() => { document.body.style.cursor = ''; }}>
+        <mesh position={[0, .12, 0]}><cylinderGeometry args={[.15, .38, .23, 12]} /><meshBasicMaterial color={color} /></mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .02, 0]}><ringGeometry args={[.65, .69, 32]} /><meshBasicMaterial color={color} side={THREE.DoubleSide} transparent opacity={.7} /></mesh>
+        <mesh position={[0, .45, 0]}><sphereGeometry args={[.1, 8, 8]} /><meshBasicMaterial color={color} /></mesh>
+        <ModuleLabel name={m.name} state={m.state} />
+      </group>;
+    })}
+    {edges.map((e, i) => <TopologyArc key={`${e.source}-${e.target}-${i}`} from={positions.get(e.source)!} to={positions.get(e.target)!} color="#397ab4" />)}
+  </group>;
+}
+
 function Installation({ modules, workflow, selected, onSelect, overview }: { modules: Module[]; workflow: Workflow; selected: string | null; onSelect: (id: string) => void; overview: boolean }) {
   const texture = useMemo(panelTexture, []);
   useEffect(() => () => texture.dispose(), [texture]);
@@ -125,6 +153,7 @@ export default function SpatialScene({ workflow, result, selected, onSelect, ove
       <directionalLight position={[5, 12, 10]} intensity={2.8} color="#c8dcff" />
       <CameraRig overview={overview} selected={selected} modules={modules} reducedMotion={reducedMotion} />
       <Installation modules={modules} workflow={workflow} selected={selected} onSelect={onSelect} overview={overview} />
+      {overview && <TopologyOverview modules={modules} workflow={workflow} onSelect={onSelect} />}
     </Canvas>
   </div>;
 }

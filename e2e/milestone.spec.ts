@@ -15,6 +15,8 @@ test('Missing Approval journey', async ({ page }) => {
   await page.locator('.module-items').getByRole('button', { name: /Human approval present/ }).click();
   await expect(page.locator('.selection-card')).toContainText('Human approval present');
   await page.getByRole('button', { name: 'Overview' }).click();
+  await page.waitForTimeout(450);
+  await page.screenshot({ path: `test-results/overview-${test.info().project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Focus' }).click();
   await page.getByRole('button', { name: '2D list' }).click();
   await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible();
