@@ -1,0 +1,13 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "faultline-api-visual-preview",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-26",
+  "vars": {
+    "MODEL_CALLS_ENABLED": "false",
+    "ALLOWED_ORIGIN": "https://feat-reference-visual-integr.faultline-web-preview.pages.dev"
+  },
+  "observability": { "enabled": true, "traces": { "enabled": true } },
+  "durable_objects": { "bindings": [{ "name": "BUDGET", "class_name": "BudgetLedger" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["BudgetLedger"] }]
+}

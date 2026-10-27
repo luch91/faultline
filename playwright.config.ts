@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 45_000,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
-  use: { baseURL: stagingUrl ?? 'http://127.0.0.1:5173', trace: 'retain-on-failure', screenshot: 'on', launchOptions: process.env.FAULTLINE_CHROMIUM_PATH ? { executablePath: process.env.FAULTLINE_CHROMIUM_PATH } : undefined },
+  use: { baseURL: stagingUrl ?? 'http://127.0.0.1:5173', trace: 'retain-on-failure', screenshot: 'on', video: 'on', launchOptions: process.env.FAULTLINE_CHROMIUM_PATH ? { executablePath: process.env.FAULTLINE_CHROMIUM_PATH } : undefined },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     { name: 'mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 360, height: 780 } } },
