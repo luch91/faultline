@@ -1,0 +1,56 @@
+.visual-app { background: #0b172a; }
+.visual-app .diagnostic { background: rgba(9, 19, 34, .94); border-right-color: #385474; }
+.visual-app .scene-shell { border-color: #466482; box-shadow: inset 0 0 55px #071423; }
+.visual-app .topbar { background: #101e33; }
+.visual-app .diagnostic-title > span,
+.visual-app .diagnostic-title > small,
+.visual-app .section-head,
+.visual-app .breadcrumb,
+.visual-app .event-count { font-size: 10px; }
+.visual-app .diagnostic-title h1 { font-size: 17px; }
+.visual-app .diag-section label,
+.visual-app .diag-copy,
+.visual-app .condition-row,
+.visual-app .gate-row,
+.visual-app .policy-entry { font-size: 11px; }
+.visual-app .diag-section textarea { font-size: 11px; }
+.visual-app .condition-row select,
+.visual-app .diag-section > select { font-size: 10px; }
+.visual-app .scene-control button { font-size: 10px; min-width: 28px; min-height: 29px; }
+.visual-app .scene-control button:hover,
+.visual-app .scene-control button:focus-visible { border-color: #9acfff; background: #224365; }
+.visual-app .scenario-control { position: absolute; top: 14px; left: 14px; z-index: 3; display: flex; gap: 4px; }
+.visual-app .scenario-control button { padding: 7px 8px; border: 1px solid #446583; background: rgba(13, 32, 53, .93); color: #9bbbd7; font: 9px 'IBM Plex Mono', monospace; }
+.visual-app .scenario-control button[aria-pressed='true'] { border-color: #8bc4f1; color: #eff8ff; background: #244667; }
+.visual-app .scenario-control button:disabled { opacity: .4; }
+.visual-app .selection-card { width: 250px; padding: 13px; background: rgba(17, 34, 55, .94); border-color: #678cb1; }
+.visual-app .selection-card strong { font-size: 12px; }
+.visual-app .selection-card small,
+.visual-app .selection-card blockquote { font-size: 10px; line-height: 1.48; }
+.visual-app .selection-card .unsafe { color: #ff9b83; }
+.visual-app .context-action { margin-top: 11px; padding: 7px 10px; background: #487dad; border: 1px solid #7eb6ec; color: #f2f8ff; font-size: 10px; font-weight: 700; }
+.visual-app .timeline-strip { border-color: #43617e; background: rgba(12, 27, 46, .94); }
+.visual-app .timeline-grid small { font-size: 9px; }
+.visual-app .timeline-grid strong { font-size: 10px; }
+.visual-app .timeline-grid .trace-event { display: block; margin-top: 12px; padding-top: 6px; border-top: 1px solid #31516e; color: #9ebed8; font: 9px 'IBM Plex Mono', monospace; }
+.visual-app .module-items button { font-size: 11px; }
+.visual-app .scene-legend { font-size: 9px; }
+.visual-app .scene-legend .purple { background: #9d88c7; }
+.visual-app .replay-event { font-size: 10px; }
+.visual-app .replay-event small { font-size: 9px; }
+.visual-app .icon-rail button b { font-size: 15px; }
+.visual-app .icon-rail button span { font-size: 9px; }
+@media (max-width: 900px) {
+  .visual-app .timeline-strip { display: block; }
+}
+@media (max-width: 680px) {
+  .visual-app .selection-card { width: 190px; padding: 9px; }
+  .visual-app .visual-main { grid-template-rows: 57px 430px auto; }
+  .visual-app .selection-card { max-height: 40%; }
+  .visual-app .scene-control.top { max-width: 250px; }
+  .visual-app .scene-control button { min-width: 29px; min-height: 28px; font-size: 9px; }
+  .visual-app .scenario-control { top: 45px; left: 8px; max-width: 100%; }
+  .visual-app .scenario-control button { font-size: 8px; padding: 5px; }
+  .visual-app .timeline-strip { min-height: 108px; }
+  .visual-app .module-items { scrollbar-color: #628cad #18324d; scrollbar-width: thin; }
+}

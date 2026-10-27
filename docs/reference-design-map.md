@@ -1,6 +1,6 @@
 # Reference design mapping
 
-Source: 55 owner supplied PNG frames in `faultline_exact_video_frames`. The original video was not present in the local workspace during this mapping. The frames are comparison material only and are not bundled in the application.
+Source: 55 owner supplied PNG frames in `faultline_exact_video_frames` and the original `design%20fl(1).mp4`. These files are comparison material only and are not bundled in the application.
 
 ## Frame breakdown
 
@@ -96,7 +96,7 @@ Source: 55 owner supplied PNG frames in `faultline_exact_video_frames`. The orig
 | --- | --- |
 | Solar panels | Repeated execution modules for actual conditions and workflow steps |
 | Inverter | Selected automation step or deployment agent |
-| Blue power cables | Declared dependencies and execution gates |
+| Blue power cables | Declared dependencies and execution gates, with a distinct violet policy route |
 | Production reading | Evaluated policy and execution outcome |
 | Underperforming panel | Violated requirement or unsafe execution path |
 | Repair card | Simulator-tested safeguard |
@@ -112,6 +112,22 @@ The reference contains FuseLab Creative branding and likely proprietary artwork.
 ## Current preview differences
 
 - The overview shows the actual workflow entities and dependencies around the installation. It does not yet reproduce the reference's dense map and city traversal.
-- The sample workflow has four real entities, so the lattice has four labeled banks. The reference contains a denser physical array. No extra workflow entities are invented to fill it.
+- The sample workflow has four real entities, so the lattice has four labeled housings. Their distinct mechanisms represent test execution, human approval, migration verification, and deployment control. The reference contains a denser physical array. No extra workflow entities are invented to fill it.
 - The preview uses compact state rows in place of the reference's continuous trend plot. Those rows are derived from the baseline, counterfactual, and safeguard results.
-- The original video was unavailable locally, so exact transition duration and easing could not be measured from the still frames.
+- The application shortens the source's longer camera passages so exploration remains interruptible. This is a deliberate timing difference.
+
+## Camera sequence measured from the source video
+
+The supplied H.264 video is 640 by 512 pixels, 30 frames per second, and 55.167 seconds long. Motion windows below were checked against the original video and the numbered PNGs. Optical flow was sampled every 0.5 seconds at reduced analysis resolution to locate movement peaks. The motion values also include object assembly and UI movement, so they are not pure camera velocity.
+
+| Sequence | Reference time | Observed movement | Implemented interaction |
+| --- | --- | --- | --- |
+| Wide system overview | 0 to 4 seconds | Slow map drift | Overview control shows graph-derived topology markers and routes. |
+| First approach and focus | 4 to 12 seconds | Motion rises around 4 to 6 seconds, then settles on the amber target | Focus moves toward the lattice with decelerating interpolation. |
+| Module reveal and operational approach | 12 to 21 seconds | Motion grows around 14 seconds and peaks near 16.5 to 20 seconds | Distinct volumetric housings become legible during the approach. |
+| Focused inspection and violation | 21 to 26 seconds | Mostly steady view with local status changes | Simulator outcome changes module and policy-route colors. |
+| Return and second selection | 26 to 40 seconds | Strong departure near 26 to 33 seconds, then another target hold | Overview can interrupt any focus move. |
+| Re-entry and safeguard comparison | 40 to 54 seconds | Assembly and approach peak near 41.5 to 47.5 seconds, then steady inspection | Focus and Replay select the tested result without a mandatory cinematic wait. |
+| Final departure | 54 to 55.167 seconds | Short renewed camera motion | Overview remains available. |
+
+The source moves with a low-high-low motion envelope across each approach. The implementation interpolates toward fixed oblique targets each animation frame with exponential deceleration, so it captures the settling character while remaining interruptible. The focus target is approximately `(5.2, 7.3, 10.5)` from the selected module and the wide target approximately `(14, 20, 27)` from the installation center, multiplied by the user zoom. Reduced-motion mode moves immediately.
