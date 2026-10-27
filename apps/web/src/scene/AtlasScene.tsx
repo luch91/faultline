@@ -28,7 +28,7 @@ function relief(x: number, z: number) {
 }
 
 function world(x: number, y: number) {
-  const px = (x - 450) / 11;
+  const px = (x - 450) / 9.7;
   const pz = (y - 295) / 13;
   return new THREE.Vector3(px, relief(px, pz), pz);
 }
@@ -95,7 +95,7 @@ function RouteField({ routes }: { routes: AtlasRoute[] }) {
     const seed = [...route.id].reduce((sum, character) => sum + character.charCodeAt(0), 0);
     return Array.from({ length: 16 }, (_, index) => .04 + index * .06).map((t, index) => {
       const point = routePoint(route, t);
-      return { x: point.x + Math.sin(seed * .13 + index * 2.3) * 26, y: point.y + Math.cos(seed * .19 + index * 1.7) * 30, scale: index % 5 === 0 ? .9 : .62, color: route.color };
+      return { x: point.x + Math.sin(seed * .13 + index * 2.3) * 34, y: point.y + Math.cos(seed * .19 + index * 1.7) * 36, scale: [.54, .66, .78, .6, 1.02][index % 5] ?? .6, color: route.color };
     });
   }), [routes]);
   const blue = samples.filter(sample => sample.color === '#71aee5');
@@ -108,14 +108,16 @@ function ArcInstances({ items, color }: { items: Array<{ x: number; y: number; s
   const ref = useRef<THREE.InstancedMesh>(null);
   const shellRef = useRef<THREE.InstancedMesh>(null);
   const glowRef = useRef<THREE.InstancedMesh>(null);
+  const coreRef = useRef<THREE.InstancedMesh>(null);
   const geometry = useMemo(() => new THREE.TorusGeometry(1.35, .14, 7, 24, Math.PI), []);
   const glowGeometry = useMemo(() => new THREE.TorusGeometry(1.35, .26, 6, 20, Math.PI), []);
+  const coreGeometry = useMemo(() => new THREE.SphereGeometry(.13, 8, 6), []);
   const shellGeometry = useMemo(() => new THREE.SphereGeometry(1.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), []);
   const material = useMemo(() => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .95, toneMapped: false }), [color]);
   const glowMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .2, toneMapped: false, depthWrite: false }), [color]);
-  const shellMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#29415f', emissive: '#10233b', emissiveIntensity: .28, roughness: .77, metalness: .15, transparent: true, opacity: .72, side: THREE.DoubleSide }), []);
+  const shellMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#29415f', emissive: '#10233b', emissiveIntensity: .2, roughness: .77, metalness: .15, transparent: true, opacity: .54, side: THREE.DoubleSide }), []);
   useEffect(() => {
-    const mesh = ref.current; const shell = shellRef.current; const glow = glowRef.current; if (!mesh || !shell || !glow) return;
+    const mesh = ref.current; const shell = shellRef.current; const glow = glowRef.current; const core = coreRef.current; if (!mesh || !shell || !glow || !core) return;
     const object = new THREE.Object3D();
     items.forEach((item, index) => {
       const position = world(item.x, item.y);
@@ -124,13 +126,17 @@ function ArcInstances({ items, color }: { items: Array<{ x: number; y: number; s
       mesh.setMatrixAt(index, object.matrix);
       shell.setMatrixAt(index, object.matrix);
       glow.setMatrixAt(index, object.matrix);
+      object.position.set(position.x, position.y + .2, position.z + .35);
+      object.scale.setScalar(item.scale); object.updateMatrix();
+      core.setMatrixAt(index, object.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
     shell.instanceMatrix.needsUpdate = true;
     glow.instanceMatrix.needsUpdate = true;
+    core.instanceMatrix.needsUpdate = true;
   }, [items]);
-  useEffect(() => () => { geometry.dispose(); glowGeometry.dispose(); shellGeometry.dispose(); material.dispose(); glowMaterial.dispose(); shellMaterial.dispose(); }, [geometry, glowGeometry, shellGeometry, material, glowMaterial, shellMaterial]);
-  return <group><instancedMesh ref={shellRef} args={[shellGeometry, shellMaterial, items.length]} frustumCulled={false} /><instancedMesh ref={glowRef} args={[glowGeometry, glowMaterial, items.length]} frustumCulled={false} /><instancedMesh ref={ref} args={[geometry, material, items.length]} frustumCulled={false} /></group>;
+  useEffect(() => () => { geometry.dispose(); glowGeometry.dispose(); coreGeometry.dispose(); shellGeometry.dispose(); material.dispose(); glowMaterial.dispose(); shellMaterial.dispose(); }, [geometry, glowGeometry, coreGeometry, shellGeometry, material, glowMaterial, shellMaterial]);
+  return <group><instancedMesh ref={shellRef} args={[shellGeometry, shellMaterial, items.length]} frustumCulled={false} /><instancedMesh ref={glowRef} args={[glowGeometry, glowMaterial, items.length]} frustumCulled={false} /><instancedMesh ref={ref} args={[geometry, material, items.length]} frustumCulled={false} /><instancedMesh ref={coreRef} args={[coreGeometry, material, items.length]} frustumCulled={false} /></group>;
 }
 
 function EntityMarker({ point, selected, onSelect }: { point: AtlasPoint; selected: boolean; onSelect: (id: string) => void }) {
