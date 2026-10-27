@@ -3,6 +3,7 @@ import { missingApproval } from '../fixtures/workflows/missing-approval';
 import { evaluate } from '../packages/simulator/src';
 
 test.beforeEach(async ({ page }) => {
+  if (process.env.FAULTLINE_STAGING_URL && !process.env.FAULTLINE_STAGING_URL.startsWith('http://127.0.0.1')) return;
   const testClient = `browser-test-${crypto.randomUUID()}`;
   await page.route('**/api/v1/**', route => route.continue({ headers: { ...route.request().headers(), 'CF-Connecting-IP': testClient } }));
 });
