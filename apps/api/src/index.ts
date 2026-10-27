@@ -69,8 +69,9 @@ async function investigate(graph:Workflow,env:Env,signal:AbortSignal,client:stri
 }
 export default {async fetch(request:Request,env:Env):Promise<Response>{
   const id=crypto.randomUUID();const headers=cors(request,env);headers.set('X-Correlation-ID',id);
-  try {const url=new URL(request.url);if(request.headers.get('origin')&&request.headers.get('origin')!==env.ALLOWED_ORIGIN)return reply({error:'Origin not allowed',correlationId:id},403,headers);const client=clientKey(request);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
+  try {const url=new URL(request.url);if(request.headers.get('origin')&&request.headers.get('origin')!==env.ALLOWED_ORIGIN)return reply({error:'Origin not allowed',correlationId:id},403,headers);if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/healthz')return reply({status:'ok'},200,headers);
+    const client=clientKey(request);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');
     if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
     if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample()]},200,headers);
     if(request.method!=='POST')return reply({error:'Route not found',correlationId:id},404,headers);

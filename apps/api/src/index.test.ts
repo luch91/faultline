@@ -33,6 +33,19 @@ describe('deterministic HTTP flow',()=>{
     const response=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://other.example'}}),env);
     expect(response.status).toBe(403);
   });
+  it('checks preflight origin without consuming the application rate limit',async()=>{
+    const original=ledger.admit;let admissions=0;
+    ledger.admit=async()=>{admissions++;return {allowed:true};};
+    const configured={...env,ALLOWED_ORIGIN:'https://faultline.example'};
+    try{
+      const allowed=await api.fetch(new Request('http://localhost/api/v1/experiments/run',{method:'OPTIONS',headers:{Origin:'https://faultline.example'}}),configured);
+      expect(allowed.status).toBe(204);
+      expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://faultline.example');
+      const denied=await api.fetch(new Request('http://localhost/api/v1/experiments/run',{method:'OPTIONS',headers:{Origin:'https://other.example'}}),configured);
+      expect(denied.status).toBe(403);
+      expect(admissions).toBe(0);
+    }finally{ledger.admit=original;}
+  });
   it('rejects an invalid intervention with a controlled error',async()=>{
     const response=await post('/api/v1/experiments/run',{workflow:missingApproval,intervention:{...missingApprovalIntervention,targetConditionId:'missing'}});
     expect(response.status).toBe(400);
