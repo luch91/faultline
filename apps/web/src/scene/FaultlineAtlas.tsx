@@ -17,6 +17,7 @@ type Props = {
 };
 
 type Point = { id: string; name: string; kind: string; x: number; y: number; color: string };
+type Route = { id: string; from: Point; to: Point; color: string; dashed?: boolean };
 
 function pointsFor(workflow: Workflow, counterfactual: EvaluationResult | null, repaired: boolean): Point[] {
   const unsafe = counterfactual?.outcome === 'UNSAFE_EXECUTION';
@@ -44,6 +45,28 @@ export function FaultlineAtlas({ workflows, selectedWorkflowId, selectedEntityId
   const byId = new Map(points.map(point => [point.id, point]));
   const highlighted = points.find(point => point.id === selectedEntityId);
   const entityCount = workflows.reduce((total, workflow) => total + workflow.conditions.length + workflow.policyRules.length + workflow.steps.length, 0);
+  const routes: Route[] = [];
+  if (selected) {
+    selected.policyRules.forEach(rule => {
+      const target = byId.get(rule.id);
+      if (!target) return;
+      rule.requiredConditionIds.forEach(id => { const from = byId.get(id); if (from) routes.push({ id: `policy-${id}-${rule.id}`, from, to: target, color: counterfactual?.outcome === 'UNSAFE_EXECUTION' && counterfactual.affectedNodeIds.includes(id) ? '#d77b70' : '#8d78b5' }); });
+      const step = byId.get(rule.subjectStepId);
+      if (step) routes.push({ id: `scope-${rule.id}`, from: target, to: step, color: '#8d78b5', dashed: true });
+    });
+    selected.steps.forEach(step => {
+      const target = byId.get(step.id);
+      if (!target) return;
+      step.executionGateIds.forEach(id => { const from = byId.get(id); if (from) routes.push({ id: `gate-${id}-${step.id}`, from, to: target, color: '#71aee5' }); });
+      step.dependsOn.forEach(id => { const from = byId.get(id); if (from) routes.push({ id: `dependency-${id}-${step.id}`, from, to: target, color: '#71aee5' }); });
+    });
+  }
+  const routePoint = (route: Route, t: number) => {
+    const controlX = (route.from.x + route.to.x) / 2;
+    const controlY = Math.min(route.from.y, route.to.y) - 105;
+    const reverse = 1 - t;
+    return { x: reverse * reverse * route.from.x + 2 * reverse * t * controlX + t * t * route.to.x, y: reverse * reverse * route.from.y + 2 * reverse * t * controlY + t * t * route.to.y };
+  };
   return <main className="atlas" aria-label="Faultline Atlas">
     <aside className="atlas-intelligence">
       <div className="atlas-kicker">FAULTLINE / TOPOLOGY</div>
@@ -53,19 +76,18 @@ export function FaultlineAtlas({ workflows, selectedWorkflowId, selectedEntityId
       <div className="atlas-statline"><span>Unsafe outcomes</span><strong>{counterfactual?.outcome === 'UNSAFE_EXECUTION' ? 1 : 0}</strong></div>
       <div className="atlas-statline"><span>Safe blocks</span><strong>{safeguard?.outcome === 'SAFE_BLOCK' ? 1 : 0}</strong></div>
       <div className="atlas-statline"><span>Verified safeguards</span><strong>{safeguard?.outcome === 'SAFE_BLOCK' ? 1 : 0}</strong></div>
+      <div className="atlas-analysis"><div className="section-head">DECLARED RELATIONSHIPS</div><div className="atlas-bar-row"><span>Policy requirements</span><strong>{selected?.policyRules.reduce((total, rule) => total + rule.requiredConditionIds.length, 0) ?? 0}</strong><i style={{ width: `${Math.min(100, (selected?.policyRules.reduce((total, rule) => total + rule.requiredConditionIds.length, 0) ?? 0) * 24)}%` }} /></div><div className="atlas-bar-row"><span>Execution gates</span><strong>{selected?.steps.reduce((total, step) => total + step.executionGateIds.length, 0) ?? 0}</strong><i className="execution" style={{ width: `${Math.min(100, (selected?.steps.reduce((total, step) => total + step.executionGateIds.length, 0) ?? 0) * 24)}%` }} /></div><div className="atlas-outcomes"><div className="section-head">EVALUATED OUTCOMES</div><span>BASELINE <strong>{baseline?.outcome ?? 'NOT RUN'}</strong></span><span>CHANGE <strong>{counterfactual?.outcome ?? 'NOT RUN'}</strong></span><span>REPAIR <strong>{safeguard?.outcome ?? 'NOT RUN'}</strong></span></div></div>
       <div className="section-head">FILTER</div>
       <div className="atlas-filters">{(['ALL', 'UNSAFE', 'SAFE BLOCK'] as const).map(value => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value}</button>)}</div>
       <small className="atlas-disclosure">Counts reflect this browser session. The loaded sample is demonstration data.</small>
+      {selected && visible.some(item => item.id === selected.id) && <div className="atlas-selection"><div className="section-head">SELECTED WORKFLOW</div><strong>{selected.title}</strong>{selected.id === activeWorkflowId && <small>BASELINE: {baseline?.outcome ?? 'NOT EVALUATED'}<br />COUNTERFACTUAL: {counterfactual?.outcome ?? 'NOT RUN'}<br />SAFEGUARD: {safeguard?.outcome ?? 'NOT RUN'}</small>}<button onClick={() => onOpen(selected)}>Open investigation</button></div>}
     </aside>
     <section className="atlas-field" aria-label="Workflow topology overview">
       {error && <div className="atlas-alert" role="alert">{error}</div>}
       <div className="atlas-field-head"><span>ABSTRACT WORKFLOW TOPOLOGY</span><span>{visible.length} WORKFLOW{visible.length === 1 ? '' : 'S'}</span></div>
       {selected && visible.some(item => item.id === selected.id) ? <svg viewBox="0 0 900 590" role="img" aria-label="Declared workflow conditions, policy, and execution topology">
-        <g fill="none" strokeLinecap="round">
-          {selected.policyRules.flatMap(rule => rule.requiredConditionIds.map(conditionId => { const a = byId.get(conditionId); const b = byId.get(rule.id); if (!a || !b) return null; const violated = counterfactual?.outcome === 'UNSAFE_EXECUTION' && selectedEntityId === conditionId; return <path key={`policy-${conditionId}-${rule.id}`} d={`M${a.x} ${a.y} Q${(a.x + b.x) / 2} ${Math.min(a.y, b.y) - 110} ${b.x} ${b.y}`} stroke={violated ? '#f07858' : '#927ac0'} strokeWidth={violated ? 2.3 : 1.2} opacity={violated ? .9 : .53} />; }))}
-          {selected.steps.flatMap(step => step.executionGateIds.map(conditionId => { const a = byId.get(conditionId); const b = byId.get(step.id); if (!a || !b) return null; return <path key={`gate-${conditionId}-${step.id}`} d={`M${a.x} ${a.y} Q${(a.x + b.x) / 2} ${Math.min(a.y, b.y) - 120} ${b.x} ${b.y}`} stroke="#6baded" strokeWidth="1.8" opacity=".7" />; }))}
-          {selected.policyRules.map(rule => { const a = byId.get(rule.id); const b = byId.get(rule.subjectStepId); return a && b ? <path key={`scope-${rule.id}`} d={`M${a.x} ${a.y} Q${(a.x + b.x) / 2} ${a.y - 55} ${b.x} ${b.y}`} stroke="#927ac0" strokeDasharray="4 6" opacity=".55" /> : null; })}
-        </g>
+        <g fill="none" strokeLinecap="round">{routes.map(route => { const controlX = (route.from.x + route.to.x) / 2; const controlY = Math.min(route.from.y, route.to.y) - 105; return <g key={route.id}><path d={`M${route.from.x} ${route.from.y} Q${controlX} ${controlY} ${route.to.x} ${route.to.y}`} stroke={route.color} strokeWidth={route.dashed ? .9 : 1.2} strokeDasharray={route.dashed ? '4 5' : undefined} opacity={route.dashed ? .35 : .42} />{!route.dashed && [0.13, 0.27, 0.41, 0.55, 0.69, 0.83].map(t => { const point = routePoint(route, t); return <path key={t} d={`M${point.x - 7} ${point.y}a7 7 0 0 1 14 0`} stroke={route.color} strokeWidth="1.2" opacity=".48" />; })}</g>; })}</g>
+        <g className="atlas-evidence" aria-label="Source evidence positions">{selected.conditions.flatMap((condition, index) => condition.sourceSpans.map((span, spanIndex) => { const owner = byId.get(condition.id); if (!owner) return null; const x = owner.x + 24 + spanIndex * 13; const y = owner.y - 45 - (index % 2) * 12; return <g key={`${condition.id}-${span.startOffset}-${spanIndex}`}><path d={`M${x} ${y - 19}l-7 19h14Z`} fill="#57bbc3" opacity=".34" /><circle cx={x} cy={y + 2} r="2" fill="#74cbd0" opacity=".8" /></g>; }))}</g>
         {points.map(point => <AtlasMarker key={point.id} point={point} selected={selectedEntityId === point.id} onSelect={() => onSelectEntity(point.id)} />)}
         <g className="atlas-workflow-marker" role="button" tabIndex={0} aria-label={`Select workflow ${selected.title}`} onClick={() => onSelect(selected.id)} onDoubleClick={() => onOpen(selected)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(selected.id); } }}>
           <path d="M363 480a42 42 0 0 1 84 0" fill="none" stroke="#7bb6ee" strokeWidth="4" />
@@ -73,13 +95,12 @@ export function FaultlineAtlas({ workflows, selectedWorkflowId, selectedEntityId
           <text x="405" y="505" textAnchor="middle" fill="#deeffc" fontSize="11">{selected.title}</text>
         </g>
       </svg> : <div className="atlas-empty">No workflows match this filter.</div>}
-      <div className="atlas-field-foot">{highlighted ? `${highlighted.kind} / ${highlighted.name}` : 'Select a marker to inspect its declared role.'}<span>BLUE: EXECUTION / VIOLET: POLICY</span></div>
+      <div className="atlas-field-foot">{highlighted ? `${highlighted.kind} / ${highlighted.name}` : 'Select a marker to inspect its declared role.'}<span>ARCHES: PATH WAYPOINTS / TRIANGLES: SOURCE EVIDENCE</span></div>
     </section>
     <aside className="atlas-directory">
       <div className="section-head">WORKFLOW DIRECTORY <span>{visible.length}</span></div>
-      {visible.map(workflow => <button key={workflow.id} className={`atlas-directory-item ${selectedWorkflowId === workflow.id ? 'active' : ''}`} onClick={() => onSelect(workflow.id)} onDoubleClick={() => onOpen(workflow)}><small>WORKFLOW / {workflow.id}</small><strong>{workflow.title}</strong><span>{workflow.conditions.length} CONDITIONS / {workflow.policyRules.length} POLICY / {workflow.steps.length} STEP</span></button>)}
-      {selected && visible.some(item => item.id === selected.id) && <div className="atlas-selection"><div className="section-head">SELECTED WORKFLOW</div><strong>{selected.title}</strong><p>{selected.sourceDocuments[0]?.text ?? 'No source text.'}</p>{selected.id === activeWorkflowId && <small>BASELINE: {baseline?.outcome ?? 'NOT EVALUATED'}<br />COUNTERFACTUAL: {counterfactual?.outcome ?? 'NOT RUN'}<br />SAFEGUARD: {safeguard?.outcome ?? 'NOT RUN'}</small>}<button onClick={() => onOpen(selected)}>Open investigation</button></div>}
-      {selected && <div className="atlas-entity-directory"><div className="section-head">DECLARED ENTITIES <span>{points.length}</span></div>{points.map(point => <button key={point.id} aria-pressed={selectedEntityId === point.id} onClick={() => onSelectEntity(point.id)}><span style={{ color: point.color }}>◠</span>{point.name}</button>)}</div>}
+      {visible.map(workflow => <button key={workflow.id} className={`atlas-directory-item ${selectedWorkflowId === workflow.id ? 'active' : ''}`} onClick={() => onSelect(workflow.id)} onDoubleClick={() => onOpen(workflow)} aria-label={`Select workflow ${workflow.title}`}><small>WORKFLOW</small><strong>{workflow.id}</strong></button>)}
+      {selected && <div className="atlas-entity-directory"><div className="section-head">ENTITY INDEX <span>{points.length}</span></div>{points.map(point => <button key={point.id} aria-label={`Select ${point.name}`} aria-pressed={selectedEntityId === point.id} onClick={() => onSelectEntity(point.id)}><span style={{ color: point.color }}>◠</span>{point.id}</button>)}</div>}
     </aside>
   </main>;
 }
