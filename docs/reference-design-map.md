@@ -130,4 +130,16 @@ The supplied H.264 video is 640 by 512 pixels, 30 frames per second, and 55.167 
 | Re-entry and safeguard comparison | 40 to 54 seconds | Assembly and approach peak near 41.5 to 47.5 seconds, then steady inspection | Focus and Replay select the tested result without a mandatory cinematic wait. |
 | Final departure | 54 to 55.167 seconds | Short renewed camera motion | Overview remains available. |
 
-The source moves with a low-high-low motion envelope across each approach. The implementation interpolates toward fixed oblique targets each animation frame with exponential deceleration, so it captures the settling character while remaining interruptible. The focus target is approximately `(5.2, 7.3, 10.5)` from the selected module and the wide target approximately `(14, 20, 27)` from the installation center, multiplied by the user zoom. Reduced-motion mode moves immediately.
+The source moves with a low-high-low motion envelope across each approach. The implementation interpolates toward fixed oblique targets each animation frame with exponential deceleration, so it captures the settling character while remaining interruptible. The focus offset is approximately `(4.35, 6.1, 8.7)` from the selected module and the wide offset approximately `(14, 19, 26)` from the installation center, adjusted for viewport width and user zoom. Reduced-motion mode moves immediately.
+
+## F1 and F2 review checkpoint
+
+The original frame 021 at approximately 21 seconds anchors the detailed installation comparison. Frames 013 to 020 show the assembly rhythm, and frames 045 to 054 show the later operational view. The original assets remain outside the repository.
+
+At 1440 by 900, the four physical modules now span roughly 65% of the usable scene width. At 1827 by 864, they span roughly 55%. These are approximate bounds read from actual browser screenshots. The earlier wide preview occupied roughly 39% of the usable scene width. The wider foundation, recessed service bays, side pathways, and structural ribs provide scale without adding workflow entities.
+
+The test runner has three diagnostic cartridges and a scan bridge. The approval checkpoint has paired locking pylons and a movable barrier that reflects the condition state. The migration check has three storage validation drums. The deployment controller has two dependency rails, an authorization face, and release indicators. All four share physical sockets and use graph-derived execution and policy routes. Their source entities remain the four items in the validated workflow.
+
+The current review screenshots are local browser captures at `C:\Users\user\faultline-visual-evidence`. The `before` directory contains the previously deployed visual preview. The `f1-desktop.png`, `f1-wide.png`, and `f2-*` files contain this F1/F2 revision. The close views crop only the implementation screenshots, never the source frames.
+
+Remaining differences for owner review: the reference has a denser installation and richer distant geography; Faultline keeps four real workflow entities and abstract architectural scenery. The diagnostic rail and trace still use the earlier panel layout. Detailed camera choreography, mobile composition, and full UI integration remain outside this checkpoint. No visual approval is inferred from passing functional checks.
