@@ -19,6 +19,8 @@ test('Missing Approval journey', async ({ page }) => {
   await page.getByRole('button', { name: '2D list' }).click();
   await expect(page.getByRole('list', { name: 'Workflow modules' })).toBeVisible();
   await page.getByRole('button', { name: '3D scene' }).click();
+  await expect(page.locator('.spatial-scene canvas')).toBeVisible();
+  await page.waitForTimeout(400);
   await page.screenshot({ path: `test-results/design-${test.info().project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'EXPERIMENT' }).click();
   await page.getByRole('combobox', { name: 'Condition' }).selectOption('human-approval');
