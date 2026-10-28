@@ -27,6 +27,11 @@ test('Missing Approval journey', async ({ page }) => {
   await expect(page.locator('.react-flow__node')).toHaveCount(5);
   await expect(page.locator('.policy-edge')).toHaveCount(4);
   await expect(page.locator('.gate-edge')).toHaveCount(2);
+  await page.locator('.react-flow__controls-fitview').click();
+  await expect.poll(() => page.locator('.graph-canvas').evaluate(canvas => {
+    const bounds = canvas.getBoundingClientRect();
+    return [...canvas.querySelectorAll('.react-flow__node')].every(node => { const rect = node.getBoundingClientRect(); return rect.top >= bounds.top && rect.bottom <= bounds.bottom && rect.left >= bounds.left && rect.right <= bounds.right; });
+  })).toBe(true);
   await page.screenshot({ path: `test-results/baseline-graph-${test.info().project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: '3D', exact: true }).click();
   await expect(page.locator('.spatial-scene canvas')).toBeVisible({ timeout: 30_000 });
@@ -201,4 +206,46 @@ test('2D navigation appears when WebGL is unavailable', async ({ page }) => {
   await expect(page.locator('.selection-card')).toContainText('Human approval present');
   await expect(page.locator('.dependency-links')).toContainText('POLICY');
   await page.screenshot({ path: `test-results/fallback-${test.info().project.name}.png`, fullPage: true });
+});
+
+test('evaluated scenarios survive pending edits and view navigation without model calls', async ({ page }) => {
+  const modelCalls: string[] = [];
+  page.on('request', request => { if (/workflows\/extract|\/investigations$/.test(request.url())) modelCalls.push(request.url()); });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await page.getByRole('button', { name: 'EXPERIMENT', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Condition', exact: true }).selectOption('human-approval');
+  await page.getByRole('button', { name: 'Apply intervention' }).click();
+  await expect(page.locator('.outcome-chip')).toHaveText('UNSAFE_EXECUTION');
+  await page.locator('.module-items').getByRole('button', { name: /Human approval present/ }).click();
+  await page.getByRole('combobox', { name: 'Condition', exact: true }).selectOption('tests-pass');
+  await expect(page.locator('.selection-card')).toContainText('Scenario observation: false');
+  await page.getByRole('button', { name: 'Test safeguard', exact: true }).click();
+  await expect(page.locator('.outcome-chip')).toHaveText('SAFE_BLOCK');
+  await page.locator('.module-items').getByRole('button', { name: /Deploy to production/ }).click();
+  await expect(page.locator('.selection-card')).toContainText('Execution gates: Automated tests pass, Migration compatible, Human approval present');
+  await page.getByRole('button', { name: 'DESIGN', exact: true }).click();
+  await expect(page.locator('.outcome-chip')).toHaveText('SAFE_BLOCK');
+  await page.getByRole('button', { name: 'ATLAS', exact: true }).click();
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await expect(page.locator('.outcome-chip')).toHaveText('SAFE_BLOCK');
+  await expect(page.locator('.selection-card')).toContainText('Deploy to production');
+  expect(modelCalls).toEqual([]);
+});
+
+test('observed slow rendering offers an immediate graph recovery', async ({ page }) => {
+  test.skip(!!process.env.FAULTLINE_STAGING_URL, 'Uses the local development render meter to sustain a deterministic measurement window');
+  await page.addInitScript(() => {
+    const requestFrame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = callback => requestFrame(() => { window.setTimeout(() => callback(performance.now()), 120); });
+  });
+  await page.goto('/?measure=1');
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await page.locator('.module-items').getByRole('button', { name: /Human approval present/ }).click();
+  await page.getByRole('button', { name: '3D', exact: true }).click();
+  await expect(page.locator('.slow-scene')).toContainText('3D rendering is slow', { timeout: 30_000 });
+  await page.getByRole('button', { name: 'Open graph', exact: true }).click();
+  await expect(page.locator('.workflow-graph')).toBeVisible();
+  await expect(page.locator('.react-flow__node.selected')).toContainText('Human approval present');
+  await expect(page.locator('.spatial-scene canvas')).toHaveCount(0);
 });

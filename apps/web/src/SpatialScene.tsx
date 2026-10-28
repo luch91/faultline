@@ -52,16 +52,16 @@ function RenderMeter() {
 }
 
 function PerformanceWatch({ onSlow }: { onSlow?: () => void }) {
-  const sample = useRef({ start: 0, frames: 0, reported: false });
-  useFrame(() => {
+  const sample = useRef({ elapsed: 0, frames: 0, reported: false });
+  useFrame((_, delta) => {
     if (!onSlow || sample.current.reported) return;
-    const now = performance.now();
-    if (!sample.current.start) { sample.current.start = now; return; }
+    // Demand rendering sleeps when idle. Idle time is not a slow frame.
+    if (delta > 2) { sample.current.elapsed = 0; sample.current.frames = 0; return; }
+    sample.current.elapsed += delta;
     sample.current.frames += 1;
-    const elapsed = now - sample.current.start;
-    if (elapsed >= 1400 && sample.current.frames >= 10) {
+    if (sample.current.elapsed >= 1.4 && sample.current.frames >= 5) {
       sample.current.reported = true;
-      if (sample.current.frames * 1000 / elapsed < 18) onSlow();
+      if (sample.current.frames / sample.current.elapsed < 18) onSlow();
     }
   });
   return null;

@@ -169,3 +169,24 @@
 .visual-app .atlas-map-toggle { margin-left: 9px; padding: 5px 7px; background: #152b43; color: #c8deee; border: 1px solid #466888; font: 9px 'IBM Plex Mono', monospace; }
 .visual-app .atlas-map-toggle:hover, .visual-app .atlas-map-toggle:focus-visible { background: #244967; border-color: #9ac7ec; }
 @media (max-width: 680px) { .atlas-initial-loading { grid-column: 1; grid-row: 2; min-height: 460px; } .atlas-visual { min-height: 0; } .atlas-visual > svg { min-height: 0; } }
+
+/* Dependency inspection uses readable model cards with explicit relationship labels. */
+.visual-app .workflow-graph { background: #0b1a2d; }
+.workflow-graph .react-flow__node-signal { width: 220px; }
+.workflow-graph .topology-signal { min-height: 100px; text-align: left; border: 1px solid var(--signal); border-radius: 3px; background: #10243b; }
+.workflow-graph .topology-signal.selected { outline: 2px solid #dcefff; outline-offset: 4px; filter: none; }
+.workflow-graph .signal-caption { min-height: 100px; padding: 13px; gap: 9px; justify-items: start; border-top: 0; background: none; }
+.workflow-graph .signal-caption strong { max-width: none; font-size: 14px; line-height: 1.4; }
+.workflow-graph .signal-caption small, .workflow-graph .signal-caption em { font-size: 10px; }
+.workflow-graph .react-flow__handle { opacity: 1; background: #b4d6ee; border-color: #10243b; }
+.workflow-graph .react-flow__edge-path { filter: none; }
+.workflow-graph .react-flow__controls { bottom: 55px; }
+.graph-diagnosis { position: absolute; top: 91px; left: 14px; right: 14px; z-index: 3; padding: 10px; border: 1px solid #766244; background: #222b32ed; color: #f1d29e; font-size: 12px; pointer-events: none; }
+.graph-key .policy:before { background: none; border-top: 2px dashed #9d88c7; }
+@media (max-width: 680px) { .graph-diagnosis { top: 90px; left: 8px; right: 8px; font-size: 11px; } }
+.workflow-graph .react-flow__controls { bottom: 8px; }
+.visual-app .workflow-graph .react-flow__controls button { width: 32px; height: 32px; min-width: 32px; padding: 6px; display: flex; justify-content: center; align-items: center; }
+.workflow-graph .react-flow__controls button svg { flex-shrink: 0; }
+.graph-key span:last-child:before { display: none; }
+
+.graph-canvas { position: absolute; inset: 130px 0 50px; }

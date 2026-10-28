@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export type HardwareKind = 'APPROVAL' | 'TEST' | 'MIGRATION' | 'DEPLOY' | 'MONITOR' | 'ROLLBACK' | 'CONDITION' | 'STEP';
 
@@ -43,9 +44,14 @@ function Fastener({ position }: { position: [number, number, number] }) {
 }
 
 function VentBank({ position, count = 5 }: { position: [number, number, number]; count?: number }) {
-  return <group position={position}>{Array.from({ length: count }, (_, i) => <mesh key={i} position={[(i - (count - 1) / 2) * .16, 0, 0]}>
-    <boxGeometry args={[.095, .018, .03]} /><meshBasicMaterial color="#071322" />
-  </mesh>)}</group>;
+  const geometry = useMemo(() => {
+    const vents = Array.from({ length: count }, (_, i) => new THREE.BoxGeometry(.095, .018, .03).translate((i - (count - 1) / 2) * .16, 0, 0));
+    const merged = mergeGeometries(vents);
+    vents.forEach(vent => vent.dispose());
+    return merged;
+  }, [count]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return <mesh position={position} geometry={geometry}><meshBasicMaterial color="#071322" /></mesh>;
 }
 
 function Signal({ position, color }: { position: [number, number, number]; color: string }) {

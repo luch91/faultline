@@ -22,6 +22,8 @@ function summarize(label, values) {
 for (const viewport of [{ name: 'desktop', width: 1440, height: 900 }, { name: 'wide', width: 1827, height: 864 }, { name: 'mobile', width: 360, height: 780 }].filter(item => !process.env.FAULTLINE_MEASURE_VIEWPORT || item.name === process.env.FAULTLINE_MEASURE_VIEWPORT)) {
   const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: 1 });
   await page.goto(`${base}/?measure=1`);
+  await page.getByRole('button', { name: 'Open investigation' }).click();
+  await page.getByRole('button', { name: '3D', exact: true }).click();
   await page.locator('.spatial-scene canvas').waitFor();
   await page.waitForTimeout(1200);
   renderers[viewport.name] = await page.locator('.spatial-scene canvas').evaluate(canvas => {

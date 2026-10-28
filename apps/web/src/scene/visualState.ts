@@ -14,6 +14,8 @@ export function visualState(workflow: Workflow, result: EvaluationResult | null,
     if (value === null || value === undefined) return 'UNKNOWN';
     return value === condition.expectedValue ? 'SATISFIED' : 'VIOLATED';
   }
+  const policy = result?.policyResults.find(item => item.ruleId === id);
+  if (policy) return policy.state === 'NOT_APPLICABLE' ? 'READY' : policy.state;
   const step = result?.stepResults.find(item => item.stepId === id);
   if (!step) return 'READY';
   if (step.eligibility === 'UNKNOWN') return 'UNKNOWN';
