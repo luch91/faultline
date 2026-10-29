@@ -55,7 +55,10 @@ export function NetworkCanvas({ network, selected, motion, query, filter, heatma
         <g className="radial-network" opacity={motion.focus} pointerEvents={motion.focus < .5 ? 'none' : 'auto'} aria-hidden={motion.focus < .5}>
           <text x="185" y="37" className="radial-column-label">Policy &amp; evidence</text><text x="418" y="37" className="radial-column-label">Execution context</text>
           {focusNodes.map((node, index) => {
-            const position = leafPosition(index); const reveal = ease((motion.expansion - index / Math.max(1, focusNodes.length) * .28) / .72);
+            const position = leafPosition(index);
+            const stagger = index / Math.max(1, focusNodes.length) * .12;
+            const reveal = ease((motion.expansion - stagger) / .3);
+            const labelReveal = ease((motion.expansion - .5 - stagger) / .25);
             const x = 300 + (position.x - 300) * reveal, y = 200 + (position.y - 200) * reveal;
             const path = paths.get(node.id)!; const direct = path.length === 1; const relation = direct ? path[0]!.relation : `CONTEXT VIA ${path.map(link => link.relation).join(' / ')}`;
             const gate = direct && path[0]!.gate, policy = path.some(link => link.policy), tested = direct && path[0]!.tested;
@@ -65,7 +68,7 @@ export function NetworkCanvas({ network, selected, motion, query, filter, heatma
               </path>
               <g role="button" tabIndex={reveal > .95 && motion.focus > .5 ? 0 : -1} aria-label={`Select relationship ${node.name}`} data-node-id={node.id} onClick={() => { onSelect(node.entityId); onRelationship(path.map(link => link.id)); }} onPointerEnter={() => setHovered(node.id)} onPointerLeave={() => setHovered(null)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(node.entityId); onRelationship(path.map(link => link.id)); } }}>
                 <circle cx={x} cy={y} r="7" fill="transparent"/><circle cx={x} cy={y} r={2.1} fill={tested ? '#5fc0ac' : '#188fc7'}/>
-                <text x={x + (position.left ? -6 : 6)} y={y + 1.5} textAnchor={position.left ? 'end' : 'start'} opacity={ease((reveal - .7) / .3)}>{short(node.name, position.left ? 23 : 28)}</text>
+                <text x={x + (position.left ? -6 : 6)} y={y + 1.5} textAnchor={position.left ? 'end' : 'start'} opacity={labelReveal}>{short(node.name, position.left ? 23 : 28)}</text>
               </g>
             </g>;
           })}
