@@ -8,7 +8,9 @@ export function Analytics({ state, network, expanded, onExpand, onOpenTools }: P
   const ranks = useMemo(() => degrees(network), [network]);
   const selected = network.nodes.find(node => node.id === state.selected);
   const related = network.links.filter(link => link.from === state.selected || link.to === state.selected);
-  const values = network.nodes.map(node => network.links.filter(link => link.from === node.id || link.to === node.id).length);
+  const values = [...network.nodes]
+    .sort((a, b) => a.x - b.x || a.y - b.y || a.id.localeCompare(b.id))
+    .map(node => network.links.filter(link => link.from === node.id || link.to === node.id).length);
   const maximum = Math.max(1, ...values);
   const points = values.map((value, index) => `${12 + index / Math.max(1, values.length - 1) * 296},${98 - value / maximum * 80}`).join(' ');
   const gates = state.sceneWorkflow?.steps.reduce((total, step) => total + step.executionGateIds.length, 0) ?? 0;
@@ -16,7 +18,7 @@ export function Analytics({ state, network, expanded, onExpand, onOpenTools }: P
     <header><div><strong>{selected?.name ?? state.workflow?.title}</strong><small>{selected?.kind ?? 'Workflow'} / {selected?.state ?? 'DECLARED'}</small></div><button className="analytics-inspect" onClick={onOpenTools}>Inspect</button><button aria-label={expanded ? 'Contract analytics' : 'Expand analytics'} onClick={onExpand}>{expanded ? '↙' : '↗'}</button></header>
     <div className="analytics-tabs"><button aria-pressed="true">Overview</button><button onClick={() => document.getElementById('source-evidence')?.scrollIntoView({ block: 'nearest' })}>Evidence</button></div>
     <div className="relationship-metrics"><div><strong>{network.nodes.length}</strong><small>Records</small></div><div><strong>{network.links.length}</strong><small>Relations</small></div><div><strong>{gates}</strong><small>Gates</small></div><div><strong>{state.result?.policyResults.filter(item => item.state === 'VIOLATED').length ?? 0}</strong><small>Violations</small></div></div>
-    <figure className="relationship-chart"><figcaption>Declared relationships by record <span>Current scenario</span></figcaption><svg viewBox="0 0 330 118" role="img" aria-label="Actual number of relationships per displayed record">
+    <figure className="relationship-chart"><figcaption>Declared relationships by map position <span>Current scenario</span></figcaption><svg viewBox="0 0 330 118" role="img" aria-label="Actual relationship counts per record, ordered left to right by map position">
       {[0, 1, 2, 3, 4].map(i => <g key={i}><line x1="12" x2="315" y1={18 + i * 20} y2={18 + i * 20} stroke="#353849" strokeWidth=".45"/><text x="1" y={21 + i * 20}>{Math.round(maximum * (1 - i / 4))}</text></g>)}
       <polygon points={`12,98 ${points} 308,98`} fill="#337b80" fillOpacity=".42"/><polyline points={points} fill="none" stroke="#62b6b1" strokeWidth="1.2"/>
       <text x="12" y="113">1</text><text x="303" y="113">{values.length}</text>
