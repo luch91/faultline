@@ -9,17 +9,17 @@ Faultline tests declared deployment policy against the conditions an automated w
 
 ## Staging preview
 
-[Open the Faultline preview](https://faultline-web-preview.pages.dev). Live Meta inference is available under server-side spending and rate limits. The deterministic sample works without model access. The Worker is at [faultline-api-preview.judithorluchee.workers.dev](https://faultline-api-preview.judithorluchee.workers.dev/healthz).
+[Open the current Faultline preview](https://feat-reference-visual-integr-k0mv.faultline-web-preview.pages.dev). This preview exposes the deterministic sample and keeps live model inference disabled. Its Worker is at [faultline-api-visual-preview.judithorluchee.workers.dev](https://faultline-api-visual-preview.judithorluchee.workers.dev/healthz).
 
 ## Product demonstration
 
 The included Missing Approval fixture declares human approval as mandatory but leaves it out of the execution gate. Removing approval produces `UNSAFE_EXECUTION`. Adding the approval gate to a copied graph produces `SAFE_BLOCK`.
 
-This branch replaces the frontend with a code-rendered multi-cluster network, focused radial relationships, ranking directory, and analytics based exclusively on the locked video reference. The 18.567-second presentation follows measured state boundaries, line formation, radial expansion, analytics expansion, and graph return movement. The previous visual components and styles are not imported by the application. Investigation, replay, source editing, and certificate export use the existing backend. The application plane remains stable: filming the source display does not animate a monitor or browser frame. This replacement is not deployed over the public preview.
+This branch replaces the frontend with a code-rendered multi-cluster network, focused radial relationships, ranking directory, and analytics based on the locked video reference. The 18.567-second presentation follows measured state boundaries, line formation, radial expansion, analytics expansion, and graph return movement. Investigation, replay, source editing, and certificate export use the existing backend. The application plane remains stable during presentation motion.
 
 ## Approach
 
-The simulator evaluates policy rules and execution gates independently. Meta Muse Spark is used for evidence-linked workflow extraction and a bounded two-turn investigation when credited Standard-mode access is configured. Model output cannot override simulator results. The frontend lets a user correct observations and gates before simulation.
+The simulator evaluates policy rules and execution gates independently. Meta Muse Spark handles evidence-linked extraction and routine investigation. Muse Wonder is routed to bounded complex investigations. A Baseten-hosted Meta Muse Spark Open challenger independently proposes condition changes when its private test switch is enabled. All candidates are validated and evaluated by the same simulator. The frontend lets a user correct observations and gates before simulation.
 
 ## Architecture
 
@@ -35,7 +35,7 @@ Model extraction is accepted only when every cited excerpt matches the submitted
 
 ## Meta status
 
-Live Meta extraction and the two-turn tool investigation have been tested locally against the credited account. The model called `run_counterfactual`, received a simulator result, then called `propose_safeguard`. New investigation certificates verify server-side model provenance before export. The local ledger records reserved, provider-reported, and unknown usage separately; it has not been reconciled against Meta Billing. Eligible open-weight integration is not available in this milestone.
+Controlled local tests completed Spark extraction and two-turn Spark and Wonder investigations. Both investigators called `run_counterfactual`, received a simulator result, then called `propose_safeguard`. Investigation certificates verify server-side model provenance before export. A separate Baseten Muse Spark Open call proposed three candidates that the simulator evaluated. The local ledger records reserved, provider-reported, and unknown usage separately. Meta Billing showed a rounded $0.04 balance change for the five latest Meta calls against a $0.033150 local estimate. Baseten promotional balance and award eligibility remain unverified; the public preview keeps all live inference disabled.
 
 ## Install
 

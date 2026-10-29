@@ -9,10 +9,10 @@ The [Meta event page](https://dev.meta.ai/events/global-hackathon) and [Cerebral
 | Time | Actual application action | Narration point |
 | --- | --- | --- |
 | 0:00 to 0:20 | Show the full desktop network and Missing Approval workflow. | A deployment agent can satisfy its execution gates while violating a declared approval policy. |
-| 0:20 to 0:50 | Submit the workflow and inspect Spark extraction and exact source spans, only if a live credited test succeeds. | The model structures evidence; the user can inspect and correct it. |
+| 0:20 to 0:50 | Submit the workflow and inspect Spark extraction and exact source spans in the controlled live recording. | The model structures evidence; the user can inspect and correct it. |
 | 0:50 to 1:20 | Focus the deployment node and inspect policy and execution relationships. | Approval is required by policy but absent from the execution gate. |
 | 1:20 to 1:50 | Apply the missing approval intervention. | The independent simulator returns `UNSAFE_EXECUTION`. |
-| 1:50 to 2:20 | Show a real Wonder route only if live verified; otherwise show the deterministic safeguard verification. | The added approval gate blocks deployment and produces `SAFE_BLOCK`. |
+| 1:50 to 2:20 | Show the recorded Wonder investigation, then the deterministic safeguard verification. | The added approval gate blocks deployment and produces `SAFE_BLOCK`. |
 | 2:20 to 2:45 | Open replay and export the certificate. | The trace and integrity hash preserve the evaluated path. |
 | 2:45 to 3:00 | Show the architecture diagram and actual repository commit. | Model hypotheses are checked by a deterministic evaluator. |
 
@@ -24,7 +24,7 @@ Use direct screen capture of the deployed application. The current deterministic
 - Track: Indie Developer, subject to the owner's accepted-participant status.
 - Theme: Push the Frontier.
 - Repository: https://github.com/luch91/faultline.
-- Working preview: https://feat-reference-visual-integr-eq6d.faultline-web-preview.pages.dev.
+- Working preview: https://feat-reference-visual-integr-k0mv.faultline-web-preview.pages.dev.
 - Owner and contributor disclosure: Ekeleme Fortune, plus any other actual human contributors confirmed by the owner.
-- Model roles: Spark extraction and routine investigation; Wonder advanced investigation only after live verification.
+- Model roles: Spark extraction and routine investigation; Wonder advanced investigation; Baseten-hosted Muse Spark Open proposes independent challenger interventions. The public preview keeps inference disabled.
 - Limitations: declared workflow semantics only, bounded safeguard search, missing evidence may be indeterminate, and no actual deployments are executed.
