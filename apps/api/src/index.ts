@@ -3,9 +3,10 @@ import { WorkflowSchema, InterventionSchema, CounterexampleCertificateSchema, ty
 import { evaluate, verifySafeguard, validateWorkflow, hash } from '@faultline/simulator';
 import {BudgetLedger,estimateMicroUsd,actualMicroUsd,type ModelCallAttestation} from './budget';
 import {modelConfig,routeInvestigation,type ModelId} from './models';
+import {EligibleOpenWeightInvestigator,ChallengerError} from './challenger';
 export {BudgetLedger};
 
-interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
+interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; BASETEN_TEST_TOKEN?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
 const MAX_BODY=60000;
 class HttpError extends Error {constructor(public status:number,message:string){super(message);}}
 const bodySchema=z.object({workflow:WorkflowSchema,intervention:InterventionSchema.optional()});
@@ -86,7 +87,7 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
   try {const url=new URL(request.url);if(request.headers.get('origin')&&request.headers.get('origin')!==env.ALLOWED_ORIGIN)return reply({error:'Origin not allowed',correlationId:id},403,headers);if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/healthz')return reply({status:'ok'},200,headers);
     const client=clientKey(request);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');
-    if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
+    if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),openWeightEnabled:env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY&&!!env.BASETEN_TEST_TOKEN,mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
     if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample()]},200,headers);
     if(request.method!=='POST')return reply({error:'Route not found',correlationId:id},404,headers);
     const data=await readJson(request);
@@ -95,6 +96,24 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
     if(url.pathname==='/api/v1/experiments/run'){const {workflow,intervention}=bodySchema.parse(data);return reply({kind:intervention?'COUNTERFACTUAL':'BASELINE',result:await evaluate(workflow,intervention)},200,headers);}
     if(url.pathname==='/api/v1/safeguards/verify'){const x=verifySchema.parse(data);return reply(await verifySafeguard(x.workflow,x.intervention,x.stepId,x.conditionId),200,headers);}
     if(url.pathname==='/api/v1/investigations'){const {workflow}=z.object({workflow:WorkflowSchema}).parse(data);const ledger=env.BUDGET.getByName('project');if(!await ledger.acquireInvestigation())throw new HttpError(429,'An investigation is already running');try{return reply(await investigate(workflow,env,request.signal,client),200,headers);}finally{await ledger.releaseInvestigation();}}
+    if(url.pathname==='/api/v1/challengers/open-weight'){
+      if(env.BASETEN_CHALLENGER_ENABLED!=='true'||env.BASETEN_CREDITS_CONFIRMED!=='true'||!env.BASETEN_API_KEY)throw new HttpError(503,'Open-weight challenger is disabled');
+      if(!env.BASETEN_TEST_TOKEN||request.headers.get('X-Faultline-Test-Token')!==env.BASETEN_TEST_TOKEN)throw new HttpError(403,'Challenger access denied');
+      const x=z.object({workflow:WorkflowSchema,hosted:z.object({investigationId:z.string().uuid(),intervention:InterventionSchema}).optional()}).parse(data);
+      const graph=validateWorkflow(x.workflow);
+      const ledger=env.BUDGET.getByName('project');
+      let hostedResult:null|Awaited<ReturnType<typeof evaluate>>=null;
+      if(x.hosted){const record=await ledger.getAttestation(x.hosted.investigationId);if(!record||record.graphHash!==await hash(graph)||record.interventionHash!==await hash(x.hosted.intervention))throw new HttpError(400,'Hosted investigation attestation does not match the workflow');hostedResult=await evaluate(graph,x.hosted.intervention);}
+      if(!await ledger.acquireInvestigation())throw new HttpError(429,'An investigation is already running');
+      try{
+        const provider=new EligibleOpenWeightInvestigator(env.BASETEN_API_KEY,true,ledger,client);
+        const challenger=await provider.generateCandidates(graph,{maxCandidates:3},request.signal);
+        const experiments=await Promise.all(challenger.candidates.map(async candidate=>{const condition=graph.conditions.find(item=>item.id===candidate.conditionId)!;const intervention=InterventionSchema.parse({id:`baseten-${candidate.conditionId}`,targetConditionId:candidate.conditionId,originalValue:condition.observedValue,replacementValue:candidate.replacementValue,reason:candidate.reason,proposedBy:'OPEN_WEIGHT',validated:true});return {intervention,result:await evaluate(graph,intervention)};}));
+        const challengerRules=[...new Set(experiments.flatMap(item=>item.result.policyResults.filter(rule=>rule.state==='VIOLATED').map(rule=>rule.ruleId)))];
+        const hostedRules=hostedResult?.policyResults.filter(rule=>rule.state==='VIOLATED').map(rule=>rule.ruleId)??[];
+        return reply({challenger,experiments,comparison:hostedResult?{hostedOutcome:hostedResult.outcome,hostedViolatedRules:hostedRules,challengerViolatedRules:challengerRules,uniqueChallengerRules:challengerRules.filter(rule=>!hostedRules.includes(rule))}:null},200,headers);
+      }catch(error){if(error instanceof ChallengerError)throw new HttpError(error.status,error.message);throw error;}finally{await ledger.releaseInvestigation();}
+    }
     if(url.pathname==='/api/v1/reports/export'){
       const x=z.object({workflow:WorkflowSchema,investigation:z.object({investigationId:z.string().uuid().optional(),intervention:InterventionSchema,verification:z.object({safeguard:z.object({stepId:z.string(),conditionId:z.string()})}).nullable().optional()})}).parse(data);
       const baseline=await evaluate(x.workflow);

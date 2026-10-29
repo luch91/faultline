@@ -6,6 +6,7 @@
   "vars": {
     "MODEL_CALLS_ENABLED": "false",
     "WONDER_ENABLED": "false",
+    "BASETEN_CHALLENGER_ENABLED": "false",
     "META_CREDITS_CONFIRMED": "true",
     "META_BILLING_MODE": "Standard",
     "ALLOWED_ORIGIN": "https://faultline-web-preview.pages.dev"

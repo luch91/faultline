@@ -1,4 +1,4 @@
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import api from './index';
 import {missingApproval,missingApprovalIntervention} from '../../../fixtures/workflows/missing-approval';
 import {hash} from '@faultline/simulator';
@@ -87,5 +87,22 @@ describe('deterministic HTTP flow',()=>{
     expect(extraction.status).toBe(503);
     const budget=await api.fetch(new Request('http://localhost/api/v1/budget'),env);
     expect(await budget.json()).toMatchObject({liveModelEnabled:false});
+  });
+  it('keeps the open-weight challenger disabled without separate credentials and switch',async()=>{
+    const response=await post('/api/v1/challengers/open-weight',{workflow:missingApproval});
+    expect(response.status).toBe(503);
+    const budget=await api.fetch(new Request('http://localhost/api/v1/budget'),env);
+    expect(await budget.json()).toMatchObject({openWeightEnabled:false});
+  });
+  it('evaluates a validated Baseten candidate with the independent simulator',async()=>{
+    const testLedger={admit:async()=>({allowed:true}),getAttestation:async()=>null,acquireInvestigation:async()=>true,releaseInvestigation:async()=>{},reserve:async()=>({allowed:true}),settle:async()=>{},markUnknown:async()=>{}};
+    const configured={...env,BASETEN_API_KEY:'test-key',BASETEN_CREDITS_CONFIRMED:'true',BASETEN_CHALLENGER_ENABLED:'true',BASETEN_TEST_TOKEN:'private-test-token',BUDGET:{getByName:()=>testLedger}} as unknown as Parameters<typeof api.fetch>[1];
+    const original=globalThis.fetch;
+    globalThis.fetch=vi.fn(async()=>Response.json({id:'baseten-mocked',choices:[{message:{content:JSON.stringify({candidates:[{conditionId:'human-approval',replacementValue:false,reason:'Test missing approval'}]})}}],usage:{prompt_tokens:100,completion_tokens:50}}));
+    try{
+      const response=await api.fetch(new Request('http://localhost/api/v1/challengers/open-weight',{method:'POST',headers:{'Content-Type':'application/json','X-Faultline-Test-Token':'private-test-token'},body:JSON.stringify({workflow:missingApproval})}),configured);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({challenger:{modelId:'meta-models/muse-spark-open-1026',responseId:'baseten-mocked'},experiments:[{result:{outcome:'UNSAFE_EXECUTION'}}]});
+    }finally{globalThis.fetch=original;}
   });
 });
