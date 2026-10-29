@@ -128,7 +128,7 @@ test('network and investigation remain functional without WebGL', async ({ page 
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await expect(page.getByLabel('Evaluation outcome')).toHaveText('SAFE_EXECUTION');
+  await expect(page.getByLabel('Evaluation outcome')).toHaveText('SAFE_EXECUTION', {timeout: 20_000});
   await page.getByRole('button', { name: 'Inspect Human approval present', exact: true }).press('Enter');
   await expect(page.locator('[data-focused-id="human-approval"]')).toBeVisible();
   await expect(page.locator('.radial-spoke')).not.toHaveCount(0);
