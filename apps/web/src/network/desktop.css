@@ -1,0 +1,86 @@
+/* Expand the approved network interface to the browser viewport. */
+@media (min-width: 681px) {
+  .faultline-network-app { display: block; width: 100vw; min-height: 100vh; background: #171923; }
+  .reference-stage { width: 100vw; height: 100vh; height: 100dvh; aspect-ratio: auto; perspective: none; }
+  .screen-space { inset: 0; width: 100%; height: calc(100% - 28px); transform: none; }
+  .network-screen { width: 100%; height: 100%; font-size: 12px; background: #1d202e; }
+  .network-topbar { height: 54px; padding: 0 22px; gap: 32px; background: #272b3b; border-color: #43495b; }
+  .new-wordmark { font-size: 17px; gap: 8px; }
+  .new-wordmark-symbol { width: 24px; height: 24px; font-size: 18px; }
+  .workflow-switch { width: min(260px, 25vw); }
+  .workflow-switch small, .network-filterbar small { font-size: 11px; color: #adb8ce; }
+  .workflow-switch select { font-size: 13px; max-width: 260px; }
+  .topbar-actions { font-size: 12px; gap: 22px; }
+  .topbar-actions button { min-height: 30px; }
+  .topbar-actions .presentation-play { width: 30px; height: 30px; font-size: 17px; }
+  .network-filterbar, .focused-context { width: calc(100% - var(--analytics-width)); height: 48px; padding: 0 18px; gap: 24px; background: #292e3e; border-color: #43495b; }
+  .network-filterbar .network-search { min-width: min(370px, 33vw); }
+  .network-search span { font-size: 20px; }
+  .network-filterbar .network-search input { width: min(330px, 29vw); font-size: 12px; }
+  .network-filterbar>label { min-width: 100px; }
+  .network-filterbar select, .focused-context select { font-size: 12px; max-width: 145px; }
+  .network-filterbar .density-control { width: 105px; }
+  .network-filterbar .density-control input { width: 100px; }
+  .focused-context { font-size: 13px; }
+  .focused-context>span { font-size: 13px; }
+  .focused-context small { font-size: 11px; }
+  .focus-back { width: 28px; height: 28px; font-size: 26px; line-height: 24px; }
+  .network-body { height: calc(100% - 102px); min-height: 0; margin-top: 0; grid-template-columns: minmax(0, 1fr) var(--analytics-width); }
+  .network-main { padding-top: 0; min-height: 0; overflow: hidden; }
+  .presentation-tabs { top: 16px; left: 18px; font-size: 12px; }
+  .presentation-tabs button { padding: 7px 13px; }
+  .network-field { position: absolute; inset: 0 0 38px; height: auto; }
+  .network-timeline { height: 38px; padding: 0 18px; font-size: 11px; background: #272c3c; border-color: #414a60; }
+  .network-timeline button { font-size: 17px; }
+  .evaluation-outcome { font-size: 11px; }
+  .live-network text { fill: #c1cadb; font-size: 6.8px; }
+  .live-network .node-subtitle { fill: #9daac0; font-size: 5px; }
+  .live-network .cloud-heading, .live-network .radial-column-label { fill: #afbad0; font-size: 6px; }
+  .radial-network text { fill: #d2d9e6; font-size: 7px; }
+  .live-network .central-label { fill: #f2f5fb; font-size: 7.5px; }
+  .field-zoom { top: 16px; right: 16px; gap: 12px; }
+  .field-zoom button { font-size: 15px; min-width: 20px; }
+  .field-zoom button:last-child { font-size: 11px; }
+  .network-legend { left: 18px; bottom: 7px; gap: 16px; font-size: 10px; color: #aab9d1; }
+  .network-legend i { width: 6px; height: 6px; }
+  .network-tooltip { left: 24px; bottom: 45px; max-width: 320px; font-size: 12px; border-color: #68768f; }
+  .network-directory, .relationship-analytics { background: #292e3f; border-color: #475067; }
+  .network-directory>header { height: 46px; padding: 0 16px; }
+  .network-directory h1 { font-size: 14px; }
+  .network-directory header button { font-size: 17px; }
+  .directory-labels { font-size: 10px; padding: 4px 15px 8px; grid-template-columns: 24px 1fr 42px; color: #aab6cc; }
+  .directory-record { height: 30px; padding: 0 15px; grid-template-columns: 24px minmax(0, 1fr) 28px 62px; font-size: 11px; }
+  .directory-record>span, .directory-record b, .directory-record i { font-size: 10px; }
+  .directory-disclosure { font-size: 10px; padding: 10px 15px; color: #a5b3cc; }
+  .relationship-analytics { padding: 16px 18px 22px; }
+  .relationship-analytics header strong { max-width: none; font-size: 15px; }
+  .relationship-analytics header small { font-size: 11px; color: #a7b7cf; }
+  .relationship-analytics header button { font-size: 16px; }
+  .relationship-analytics header .analytics-inspect { font-size: 11px; padding: 7px 12px; }
+  .analytics-tabs { font-size: 12px; height: 30px; margin-top: 18px; }
+  .analytics-tabs button { padding-bottom: 8px; }
+  .relationship-metrics { margin: 15px 0 18px; }
+  .relationship-metrics strong { font-size: 17px; }
+  .relationship-metrics small { font-size: 11px; color: #a8b6cb; }
+  .relationship-chart { margin-bottom: 18px; }
+  .relationship-chart figcaption { font-size: 11px; color: #a9b7cd; }
+  .relationship-chart figcaption span { color: #9eafc5; }
+  .relationship-chart svg { height: 145px; }
+  .relationship-chart text { font-size: 5px; fill: #b5c2d4; }
+  .analytics-columns { gap: 18px; margin: 15px 0; }
+  .relationship-analytics h3 { font-size: 12px; }
+  .relationship-analytics h3 small { font-size: 10px; }
+  .analytics-columns button, .related-table table, .related-table td button { font-size: 11px; color: #c1ccde; }
+  .related-table th { font-size: 10px; color: #adbad0; }
+  .related-table td { padding: 7px 4px; border-color: #444e64; }
+  .experiment-tools label, .source-readout, .actual-trace { font-size: 11px; }
+  .experiment-tools select, .experiment-actions button { font-size: 11px; }
+  .experiment-tools>small, .source-readout small, .analytics-selection { font-size: 10px; }
+  .presentation-scrubber { left: 30%; right: 30%; bottom: 0; height: 28px; opacity: 1; font-size: 10px; }
+  .presentation-scrubber button, .presentation-scrubber output { font-size: 10px; }
+  .presentation-scrubber input { height: 6px; }
+}
+
+@media (max-width: 680px) {
+  .screen-space { transform: scale(var(--screen-scale)); }
+}

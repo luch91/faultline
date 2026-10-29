@@ -63,9 +63,29 @@ describe('deterministic HTTP flow',()=>{
     ledger.getAttestation=async()=>({graphHash,interventionHash,stepId:'deploy-production',conditionId:'human-approval',responseIds:['resp_verified'],toolCallIds:['call_verified'],inputTokens:100,outputTokens:50,verificationOutcome:'SAFE_BLOCK'});
     try{const response=await post('/api/v1/reports/export',{workflow:missingApproval,investigation:{investigationId:'00000000-0000-4000-8000-000000000001',intervention:missingApprovalIntervention,verification:{safeguard:{stepId:'deploy-production',conditionId:'human-approval'}}}});expect(response.status).toBe(200);expect(await response.json()).toMatchObject({modelMetadata:{model:'muse-spark-1.3',responseIds:['resp_verified'],toolCallIds:['call_verified']}});}finally{ledger.getAttestation=original;}
   });
+  it('exports Wonder call provenance from the trusted ledger',async()=>{
+    const graphHash=await hash(missingApproval);
+    const interventionHash=await hash(missingApprovalIntervention);
+    const original=ledger.getAttestation;
+    ledger.getAttestation=async()=>({graphHash,interventionHash,stepId:'deploy-production',conditionId:'human-approval',responseIds:['resp_wonder'],toolCallIds:['call_wonder'],inputTokens:120,outputTokens:70,verificationOutcome:'SAFE_BLOCK',calls:[{modelId:'muse-wonder-1.0',role:'COUNTERFACTUAL',responseId:'resp_wonder',toolCallId:'call_wonder',inputTokens:120,outputTokens:70,accountingStatus:'PROVIDER_USAGE',routingReason:'Complex workflow'}]});
+    try{
+      const response=await post('/api/v1/reports/export',{workflow:missingApproval,investigation:{investigationId:'00000000-0000-4000-8000-000000000001',intervention:missingApprovalIntervention,verification:{safeguard:{stepId:'deploy-production',conditionId:'human-approval'}}}});
+      expect(response.status).toBe(200);
+      const certificate=await response.json() as {modelMetadata:{model:string;calls:Array<{modelId:string}>};integrityHash:string};
+      expect(certificate.modelMetadata.model).toBe('muse-wonder-1.0');
+      expect(certificate.modelMetadata.calls[0]?.modelId).toBe('muse-wonder-1.0');
+      expect(certificate.integrityHash).toMatch(/^[a-f0-9]{64}$/);
+    }finally{ledger.getAttestation=original;}
+  });
   it('throttles requests without an Origin header',async()=>{
     const original=ledger.admit;
     ledger.admit=async()=>({allowed:false,reason:'Request rate limit exceeded'});
     try{const response=await api.fetch(new Request('http://localhost/api/v1/samples'),env);expect(response.status).toBe(429);}finally{ledger.admit=original;}
+  });
+  it('keeps live model routes disabled without explicit configuration',async()=>{
+    const extraction=await post('/api/v1/workflows/extract',{text:'Production deployment requires tests, approval, and migration compatibility.'});
+    expect(extraction.status).toBe(503);
+    const budget=await api.fetch(new Request('http://localhost/api/v1/budget'),env);
+    expect(await budget.json()).toMatchObject({liveModelEnabled:false});
   });
 });

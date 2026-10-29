@@ -6,6 +6,25 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/**', route => route.continue({ headers: { ...route.request().headers(), 'CF-Connecting-IP': client } }));
 });
 
+test('desktop application fills the viewport and preserves circular graph geometry', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop');
+  await page.goto('/');
+  await expect(page.getByLabel('Evaluation outcome')).toHaveText('SAFE_EXECUTION');
+  for (const [width, height] of [[1366,768],[1440,900],[1920,1080],[2560,1440]] as const) {
+    await page.setViewportSize({width,height});
+    const geometry=await page.evaluate(() => {
+      const screen=document.querySelector('.network-screen')!.getBoundingClientRect();
+      const body=document.documentElement;
+      const circle=document.querySelector('.cluster-overview .network-node circle:nth-of-type(2)')?.getBoundingClientRect();
+      return {screenWidth:screen.width,screenHeight:screen.height,scrollWidth:body.scrollWidth,circleWidth:circle?.width,circleHeight:circle?.height};
+    });
+    expect(geometry.screenWidth).toBe(width);
+    expect(geometry.screenHeight).toBeGreaterThan(height-30);
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(width);
+    if(geometry.circleWidth&&geometry.circleHeight)expect(Math.abs(geometry.circleWidth-geometry.circleHeight)).toBeLessThan(1);
+  }
+});
+
 test('Missing Approval evaluation, safeguard, replay, and certificate survive the visual replacement', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');

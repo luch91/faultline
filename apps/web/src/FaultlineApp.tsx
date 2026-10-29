@@ -58,7 +58,7 @@ export default function FaultlineApp() {
   function overview() { setExpanded(null); play(314 / 30, 17.6); }
   function selectScenario(scenario: Scenario) { state.setScenario(scenario); }
   // The reference camera films a display. Keep the real application plane stable.
-  const planeStyle = { '--screen-scale': screenScale, '--analytics-width': `${isFocus ? 245 + (largeAnalytics ? 105 : 0) : 180}px`, transform: `scale(${screenScale})` } as CSSProperties;
+  const planeStyle = { '--screen-scale': screenScale, '--analytics-width': isFocus ? largeAnalytics ? 'clamp(420px, 32vw, 620px)' : 'clamp(340px, 26vw, 500px)' : 'clamp(280px, 22vw, 420px)' } as CSSProperties;
   const records = [...state.samples.filter(item => item.id !== state.workflow?.id), ...(state.workflow ? [state.workflow] : [])];
   return <main className="faultline-network-app" aria-label="Faultline workflow explorer">
     <div className="reference-stage" ref={stage} data-motion-time={time.toFixed(3)} data-motion-phase={motion.phase} data-analytics-expanded={largeAnalytics}>
