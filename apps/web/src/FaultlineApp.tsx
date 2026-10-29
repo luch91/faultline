@@ -10,7 +10,7 @@ const groupNames = Object.keys(colors) as Group[];
 export default function FaultlineApp() {
   const state = useInvestigation();
   const [time, setTime] = useState(() => { const value = Number(new URLSearchParams(location.search).get('motion') ?? 0); return Number.isFinite(value) ? Math.min(REFERENCE_DURATION, Math.max(0, value)) : 0; });
-  const [animation, setAnimation] = useState<{ start: number; end: number; started: number } | null>(null);
+  const [animation, setAnimation] = useState<{ start: number; end: number } | null>(null);
   const [expanded, setExpanded] = useState<boolean | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Group | 'All'>('All');
@@ -42,7 +42,8 @@ export default function FaultlineApp() {
   useEffect(() => {
     if (!animation) return;
     let frame = 0;
-    const tick = (now: number) => { const next = Math.min(animation.end, animation.start + (now - animation.started) / 1000); setTime(next); if (next < animation.end) frame = requestAnimationFrame(tick); else setAnimation(null); };
+    let started: number | null = null;
+    const tick = (now: number) => { started ??= now; const next = Math.min(animation.end, animation.start + (now - started) / 1000); setTime(next); if (next < animation.end) frame = requestAnimationFrame(tick); else setAnimation(null); };
     frame = requestAnimationFrame(tick); return () => cancelAnimationFrame(frame);
   }, [animation]);
   useEffect(() => {
@@ -52,7 +53,7 @@ export default function FaultlineApp() {
   function play(start: number, end: number, explicit = false) {
     setFlat(false); setManualScale(null); if (start === 0) setExpanded(null);
     if (reducedMotion && !explicit) { setAnimation(null); setTime(end); return; }
-    setTime(start); setAnimation({ start, end, started: performance.now() });
+    setTime(start); setAnimation({ start, end });
   }
   function focus(id: string) { state.setSelected(id); setExpanded(null); play(47 / 30, 6.95); }
   function overview() { setExpanded(null); play(314 / 30, 17.6); }
