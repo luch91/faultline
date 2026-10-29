@@ -6,7 +6,7 @@
   "vars": {
     "MODEL_CALLS_ENABLED": "false",
     "WONDER_ENABLED": "false",
-    "ALLOWED_ORIGIN": "https://feat-reference-visual-integr.faultline-web-preview.pages.dev"
+    "ALLOWED_ORIGIN": "https://feat-reference-visual-integr-eq6d.faultline-web-preview.pages.dev"
   },
   "observability": { "enabled": true, "traces": { "enabled": true } },
   "durable_objects": { "bindings": [{ "name": "BUDGET", "class_name": "BudgetLedger" }] },
