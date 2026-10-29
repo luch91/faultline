@@ -137,3 +137,26 @@ test('API errors are displayed without invented records', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveText('Sample service unavailable');
   await expect(page.locator('.directory-record')).toHaveCount(0);
 });
+
+test('relationship inspection exposes actual semantics and filming never moves the application frame', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.getByLabel('Evaluation outcome')).toHaveText('SAFE_EXECUTION');
+  const initial = await page.locator('.network-screen').boundingBox();
+  await page.getByRole('button', { name: 'Inspect POLICY REQUIREMENT: Human approval present to Deployment policy', exact: true }).press('Enter');
+  const details = page.getByRole('dialog', { name: 'Relationship details' });
+  await expect(details).toContainText('Human approval present → Deployment policy');
+  await expect(details).toContainText('Policy requirement, independently evaluated');
+  await details.press('Escape');
+  await page.getByRole('button', { name: 'Inspect Deploy to production', exact: true }).press('Enter');
+  await expect(page.locator('[data-focused-id="deploy-production"]')).toBeVisible();
+  const focused = await page.locator('.network-screen').boundingBox();
+  expect(focused).toEqual(initial);
+  await expect(page.locator('.monitor-edge, .presentation-surround')).toHaveCount(0);
+  const labels = await page.locator('.radial-spoke text').evaluateAll(elements => elements.map(element => { const box = (element as SVGGraphicsElement).getBBox(); return { x: box.x, right: box.x + box.width }; }));
+  expect(labels.every(box => box.x >= 0 && box.right <= 570)).toBe(true);
+  await page.getByRole('button', { name: 'Select relationship Human approval present', exact: true }).press('Enter');
+  await expect(details).toContainText('POLICY APPLIES TO');
+  await expect(details).toContainText('POLICY REQUIREMENT');
+  await expect(details).not.toContainText('Actual execution gate');
+});

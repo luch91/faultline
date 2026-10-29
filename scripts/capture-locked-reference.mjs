@@ -13,7 +13,7 @@ page.on('pageerror', error => errors.push(error.message));
 page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 await page.route('**/api/v1/**', route => route.continue({ headers: { ...route.request().headers(), 'CF-Connecting-IP': `reference-capture-${crypto.randomUUID()}` } }));
 const settle = async () => { await page.getByLabel('Evaluation outcome').getByText('SAFE_EXECUTION', { exact: true }).waitFor(); await page.waitForTimeout(200); await page.mouse.move(749, 511); };
-for (const [name, t] of [['01-overview', 0], ['02-perspective-selection', 1.9], ['03-line-formation', 2.8], ['04-radial-expansion', 3.5], ['05-focused-relationships', 5], ['06-expanded-analytics', 8], ['07-distant-return', 11], ['08-overview-approach', 13.5], ['09-returned-overview', 17], ['10-final-transition', 18.5]]) {
+for (const [name, t] of [['01-overview', 0], ['02-focus-selection', 1.9], ['03-line-formation', 2.8], ['04-radial-expansion', 3.5], ['05-focused-relationships', 5], ['06-expanded-analytics', 8], ['07-network-return', 11], ['08-overview-approach', 13.5], ['09-returned-overview', 17], ['10-final-transition', 18.5]]) {
   await page.goto(`${base}/?motion=${t}`); await settle();
   await page.screenshot({ path: join(output, `${name}.png`) });
 }
@@ -35,6 +35,9 @@ await page.locator('.evaluation-outcome').getByText('SAFE_BLOCK', { exact: true 
 await page.getByRole('button', { name: 'Close panel' }).click();
 await page.getByRole('button', { name: 'Reset perspective' }).click();
 await page.mouse.move(749, 511); await page.screenshot({ path: join(output, '12-verified-safeguard.png') });
+await page.setViewportSize({width:360,height:780});
+await page.getByRole('button', {name:'Workflow tools',exact:true}).click();
+await page.screenshot({path:join(output,'14-mobile-investigation.png')});
 await context.close();
 const recording = await browser.newContext({ viewport: { width: 750, height: 512 }, deviceScaleFactor: 1, recordVideo: { dir: output, size: { width: 750, height: 512 } } });
 const motionPage = await recording.newPage();

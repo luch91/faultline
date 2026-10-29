@@ -15,7 +15,7 @@ Faultline tests declared deployment policy against the conditions an automated w
 
 The included Missing Approval fixture declares human approval as mandatory but leaves it out of the execution gate. Removing approval produces `UNSAFE_EXECUTION`. Adding the approval gate to a copied graph produces `SAFE_BLOCK`.
 
-This branch replaces the frontend with a code-rendered multi-cluster network, focused radial relationships, ranking directory, and analytics based exclusively on the locked video reference. The 18.567-second presentation reproduces measured cuts, line formation, radial expansion, camera projection, analytics expansion, and return movement. The previous visual components and styles are not imported by the application. Investigation, replay, source editing, and certificate export use the existing backend. This replacement is not deployed over the public preview.
+This branch replaces the frontend with a code-rendered multi-cluster network, focused radial relationships, ranking directory, and analytics based exclusively on the locked video reference. The 18.567-second presentation follows measured state boundaries, line formation, radial expansion, analytics expansion, and graph return movement. The previous visual components and styles are not imported by the application. Investigation, replay, source editing, and certificate export use the existing backend. The application plane remains stable: filming the source display does not animate a monitor or browser frame. This replacement is not deployed over the public preview.
 
 ## Approach
 
