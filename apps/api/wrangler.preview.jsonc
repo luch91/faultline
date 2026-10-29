@@ -4,7 +4,8 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-26",
   "vars": {
-    "MODEL_CALLS_ENABLED": "true",
+    "MODEL_CALLS_ENABLED": "false",
+    "WONDER_ENABLED": "false",
     "META_CREDITS_CONFIRMED": "true",
     "META_BILLING_MODE": "Standard",
     "ALLOWED_ORIGIN": "https://faultline-web-preview.pages.dev"
