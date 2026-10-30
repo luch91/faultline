@@ -7,11 +7,43 @@ const ledger:{admit:()=>Promise<{allowed:boolean;reason?:string}>;getAttestation
 const env={BUDGET:{getByName:()=>ledger}} as unknown as Parameters<typeof api.fetch>[1];
 async function post(path:string,body:unknown){return api.fetch(new Request(`http://localhost${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),env);}
 describe('deterministic HTTP flow',()=>{
+  it('downgrades a cited but unavailable observation to unknown before evaluation',async()=>{
+    const text='Release requires approval. The recorded approval evidence is not available. Agent checks no condition before release.';
+    const extracted={title:'Approval evidence unavailable',conditions:[{id:'approval',name:'Approval',expectedValue:true,observedValue:false,evidence:'recorded approval evidence is not available'}],policyRules:[{id:'policy',description:'Release requires approval',subjectStepId:'release',requiredConditionIds:['approval'],evidence:'Release requires approval.'}],steps:[{id:'release',name:'Release',actionType:'DEPLOY',dependsOn:[],executionGateIds:[],evidence:'Agent checks no condition before release.'}]};
+    const originalFetch=globalThis.fetch;
+    globalThis.fetch=vi.fn(async()=>Response.json({id:'resp-test',output:[{content:[{type:'output_text',text:JSON.stringify(extracted)}]}],usage:{input_tokens:100,output_tokens:100}}));
+    const modelLedger={...ledger,reserve:async()=>({allowed:true}),settle:async()=>{},markUnknown:async()=>{}};
+    const modelEnv={BUDGET:{getByName:()=>modelLedger},MODEL_CALLS_ENABLED:'true',META_CREDITS_CONFIRMED:'true',META_BILLING_MODE:'Standard',MODEL_API_KEY:'test-key'} as unknown as Parameters<typeof api.fetch>[1];
+    try{
+      const response=await api.fetch(new Request('http://localhost/api/v1/workflows/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}),modelEnv);
+      expect(response.status).toBe(200);
+      const body=await response.json() as {workflow:typeof missingApproval};
+      expect(body.workflow.conditions[0]?.observedValue).toBeNull();
+      expect((await api.fetch(new Request('http://localhost/api/v1/experiments/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workflow:body.workflow})}),modelEnv)).status).toBe(200);
+      await expect((await import('@minsk/simulator')).evaluate(body.workflow).then(result=>result.outcome)).resolves.toBe('INDETERMINATE');
+    }finally{globalThis.fetch=originalFetch;}
+  });
   it('keeps controlled comparison routes inaccessible without the private evaluation token',async()=>{
     const assisted=await post('/api/v1/evaluation/investigate',{workflow:missingApproval,modelId:'muse-wonder-1.0'});
     const direct=await post('/api/v1/evaluation/model-only',{workflow:missingApproval,modelId:'muse-spark-1.3'});
     expect(assisted.status).toBe(403);
     expect(direct.status).toBe(403);
+  });
+  it('rejects an invalid requested target before model transport',async()=>{
+    const response=await post('/api/v1/investigations',{workflow:missingApproval,targetConditionId:'not-a-condition'});
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({error:'Invalid investigation target'});
+  });
+  it('rejects a model tool call that ignores the requested condition',async()=>{
+    const originalFetch=globalThis.fetch;
+    globalThis.fetch=vi.fn(async()=>Response.json({id:'resp-wrong-target',output:[{type:'function_call',name:'run_counterfactual',call_id:'call-wrong',arguments:JSON.stringify({conditionId:'tests-pass',replacementValue:false})}],usage:{input_tokens:100,output_tokens:50}}));
+    const modelLedger={...ledger,reserve:async()=>({allowed:true}),settle:async()=>{},markUnknown:async()=>{},acquireInvestigation:async()=>true,releaseInvestigation:async()=>{}};
+    const modelEnv={BUDGET:{getByName:()=>modelLedger},MODEL_CALLS_ENABLED:'true',META_CREDITS_CONFIRMED:'true',META_BILLING_MODE:'Standard',MODEL_API_KEY:'test-key'} as unknown as Parameters<typeof api.fetch>[1];
+    try{
+      const response=await api.fetch(new Request('http://localhost/api/v1/investigations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workflow:missingApproval,targetConditionId:'human-approval'})}),modelEnv);
+      expect(response.status).toBe(502);
+      expect(await response.json()).toMatchObject({error:'Meta selected an ineligible intervention target'});
+    }finally{globalThis.fetch=originalFetch;}
   });
   it('serves the sample and evaluates a counterfactual without model transport',async()=>{
     const sample=await api.fetch(new Request('http://localhost/api/v1/samples'),env);

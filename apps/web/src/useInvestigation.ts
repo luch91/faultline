@@ -80,7 +80,7 @@ export function useInvestigation() {
   }
   function investigate() {
     if (!workflow) return;
-    return run('Meta investigation', s => call<Investigation>('/api/v1/investigations', { workflow }, s), x => { setBaseline(x.baseline); setIntervention(x.intervention); setApplied(x.intervention); setFailure(x.failure); setVerification(x.verification); setTrace(x.trace); setModel(x.model); setRouting(x.routing); setInvestigationId(x.investigationId ?? null); setScenario('COUNTERFACTUAL'); });
+    return run('Meta investigation', s => call<Investigation>('/api/v1/investigations', { workflow, ...(intervention?{targetConditionId:intervention.targetConditionId}:{}) }, s), x => { setBaseline(x.baseline); setIntervention(x.intervention); setApplied(x.intervention); setFailure(x.failure); setVerification(x.verification); setTrace(x.trace); setModel(x.model); setRouting(x.routing); setInvestigationId(x.investigationId ?? null); setScenario('COUNTERFACTUAL'); });
   }
   function verify() {
     if (!workflow || !applied) return;

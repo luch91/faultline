@@ -1,9 +1,10 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { heldoutSpecs, heldoutWorkflow } from '../model-evaluation/heldout';
 import { evaluate, validateWorkflow, verifySafeguard } from '../packages/simulator/src';
+import { timeTask } from '../apps/api/src/task-timing';
 
 type Label = { outcome: string; repair: string | null; basis: string };
-type Result = { caseId: string; method: string; model: string; status: 'PASS' | 'FAIL' | 'ERROR'; latencyMs: number; selectedTarget?: boolean; actualOutcome?: string; predictedOutcome?: string; outcomeCorrect?: boolean; verifiedRepair?: boolean; grounded?: boolean; usage?: unknown; error?: string; response?: unknown };
+type Result = { caseId: string; method: string; model: string; status: 'PASS' | 'FAIL' | 'ERROR'; latencyMs: number; timing?: { taskId: string; modelId: string; startedAtMs: number; completedAtMs: number; durationMs: number }; selectedTarget?: boolean; actualOutcome?: string; predictedOutcome?: string; outcomeCorrect?: boolean; verifiedRepair?: boolean; grounded?: boolean; usage?: unknown; error?: string; response?: unknown };
 const labels = JSON.parse(await readFile('model-evaluation/ground-truth.json', 'utf8')) as { version: string; cases: Record<string, Label> };
 const vars = Object.fromEntries((await readFile('apps/api/.dev.vars', 'utf8')).split(/\r?\n/).filter(line => /^[A-Za-z_][A-Za-z0-9_]*=/.test(line)).map(line => { const i = line.indexOf('='); return [line.slice(0, i), line.slice(i + 1)]; }));
 if (process.env.MINSK_MODEL_EVAL_AUTHORIZED !== 'true' || process.env.MINSK_EVAL_MAX_SPEND_USD !== '10' || vars.MINSK_EVAL_MAX_CALLS !== '80' || vars.MINSK_EVAL_MAX_MICRO_USD !== '10000000') throw new Error('Controlled evaluation authorization and Worker limits are required');
@@ -33,9 +34,9 @@ const persist = async (refresh = false) => {
 };
 const run = async (caseId: string, method: string, model: string, fn: () => Promise<Omit<Result, 'caseId' | 'method' | 'model' | 'latencyMs'>>): Promise<void> => {
   if (results.some(item => item.caseId === caseId && item.method === method && item.model === model)) return;
-  const begin = performance.now();
-  try { const outcome = await fn(); results.push({ caseId, method, model, latencyMs: Math.round(performance.now() - begin), ...outcome }); }
-  catch (error) { results.push({ caseId, method, model, latencyMs: Math.round(performance.now() - begin), status: 'ERROR', error: error instanceof Error ? error.message : String(error) }); }
+  const measured = await timeTask(`${caseId}:${method}`, model, fn);
+  if (measured.ok) results.push({ caseId, method, model, latencyMs: measured.timing.durationMs, timing: measured.timing, ...measured.value });
+  else results.push({ caseId, method, model, latencyMs: measured.timing.durationMs, timing: measured.timing, status: 'ERROR', error: measured.error instanceof Error ? measured.error.message : String(measured.error) });
   await persist();
   const last = results.at(-1)!;
   process.stdout.write(`${caseId} ${method} ${last.status} ${last.actualOutcome ?? ''} ${last.latencyMs}ms\n`);
