@@ -4,12 +4,16 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-26",
   "vars": {
-    "MODEL_CALLS_ENABLED": "false",
-    "WONDER_ENABLED": "false",
-    "BASETEN_CHALLENGER_ENABLED": "false",
+    "MODEL_CALLS_ENABLED": "true",
+    "WONDER_ENABLED": "true",
+    "BASETEN_CHALLENGER_ENABLED": "true",
+    "PUBLIC_CHALLENGER_ENABLED": "true",
+    "BASETEN_CREDITS_CONFIRMED": "true",
+    "META_CEILING_MICRO_USD": "49000000",
+    "BASETEN_CEILING_MICRO_USD": "1000000",
     "META_CREDITS_CONFIRMED": "true",
     "META_BILLING_MODE": "Standard",
-    "ALLOWED_ORIGIN": "https://minsk-web-preview.pages.dev"
+    "ALLOWED_ORIGIN": "https://minsk-web-preview.pages.dev,https://issue8.minsk-web-preview.pages.dev"
   },
   "durable_objects": {
     "bindings": [{ "name": "BUDGET", "class_name": "BudgetLedger" }]

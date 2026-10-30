@@ -75,6 +75,14 @@ describe('deterministic HTTP flow',()=>{
     const response=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://other.example'}}),env);
     expect(response.status).toBe(403);
   });
+  it('allows only exact configured preview origins',async()=>{
+    const configured={...env,ALLOWED_ORIGIN:'https://minsk.example,https://issue8.example'};
+    const allowed=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://issue8.example'}}),configured);
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://issue8.example');
+    const denied=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://issue8.example.attacker.test'}}),configured);
+    expect(denied.status).toBe(403);
+  });
   it('checks preflight origin without consuming the application rate limit',async()=>{
     const original=ledger.admit;let admissions=0;
     ledger.admit=async()=>{admissions++;return {allowed:true};};
