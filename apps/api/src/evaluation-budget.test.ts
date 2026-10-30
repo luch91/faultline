@@ -16,4 +16,10 @@ describe('controlled evaluation dispatch limit',()=>{
     expect(evaluationAdmission(0,0,0).allowed).toBe(false);
     expect(evaluationAdmission(5,295_000,6_000).allowed).toBe(false);
   });
+  it('accepts a configured larger session and rejects invalid limits',()=>{
+    expect(evaluationAdmission(39,8_000_000,100_000,40,10_000_000).allowed).toBe(true);
+    expect(evaluationAdmission(40,8_000_000,100_000,40,10_000_000).allowed).toBe(false);
+    expect(evaluationAdmission(0,0,1,101,10_000_000).allowed).toBe(false);
+    expect(evaluationAdmission(0,0,1,40,10_000_001).allowed).toBe(false);
+  });
 });
