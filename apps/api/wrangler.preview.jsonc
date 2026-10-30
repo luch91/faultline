@@ -14,7 +14,7 @@
     "MINSK_EVAL_MAX_MICRO_USD": "2000000",
     "META_CREDITS_CONFIRMED": "true",
     "META_BILLING_MODE": "Standard",
-    "ALLOWED_ORIGIN": "https://minsk-web-preview.pages.dev,https://issue8.minsk-web-preview.pages.dev"
+    "ALLOWED_ORIGIN": "https://minsk-web-preview.pages.dev,https://issue8.minsk-web-preview.pages.dev,https://feat-issue-8-live-models.minsk-web-preview.pages.dev"
   },
   "durable_objects": {
     "bindings": [{ "name": "BUDGET", "class_name": "BudgetLedger" }]
