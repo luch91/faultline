@@ -29,7 +29,7 @@ pnpm benchmark
 pnpm dev
 ```
 
-The offline benchmark uses 12 versioned cases and an independent reference oracle. It makes no provider calls. The [preview](https://minsk-web-preview.pages.dev) has live inference disabled until the deployment controls and configuration are verified.
+The offline benchmark uses 12 versioned cases and an independent reference oracle. It makes no provider calls. The [preview](https://minsk-web-preview.pages.dev) exposes a budgeted live test environment only when its server-side switches and provider secrets are configured. Its status is visible at `/api/v1/budget`; a disabled or exhausted provider is reported to the caller rather than simulated.
 
 For the Missing Approval fixture, the baseline is `SAFE_EXECUTION`. Changing approval to false yields `UNSAFE_EXECUTION` because deployment lacks that gate. Adding the gate yields `SAFE_BLOCK` while the policy condition remains violated.
 

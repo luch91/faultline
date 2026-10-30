@@ -1,9 +1,9 @@
-# Minsk preview deployment
+# Preview deployment
 
-The Minsk functional preview is deployed at https://minsk-web-preview.pages.dev. Its Worker is at https://minsk-api-preview.judithorluchee.workers.dev. On October 30, 2026, the frontend, Worker health endpoint, and budget endpoint returned HTTP 200. Desktop and mobile Playwright journeys passed against the public URL. The previous frontend preview belongs to the rejected design.
+The Minsk functional preview is deployed at https://minsk-web-preview.pages.dev and its Worker is https://minsk-api-preview.judithorluchee.workers.dev. The Worker configuration is `apps/api/wrangler.preview.jsonc` and uses a persistent Durable Object budget ledger.
 
-The Worker configuration is `apps/api/wrangler.preview.jsonc`. It disables Meta and Baseten inference and allows the Pages origin. The budget endpoint confirmed `liveModelEnabled: false` and `openWeightEnabled: false`. The Worker has a Durable Object budget binding, but no model secret is required for deterministic preview routes.
+Deploy only a validated commit. First run the Worker dry build, deploy the Worker with the project-local Wrangler configuration, then deploy the corresponding Pages build with `VITE_API_URL` set to the Worker URL. Verify `/healthz`, `/api/v1/budget`, samples, baseline evaluation, counterfactual, safeguard verification, certificate export and certificate verification from the deployed browser.
 
-Build and deploy only from a validated commit on the authorized Cloudflare account. Build the frontend with `VITE_API_URL` set to the verified Worker URL, then deploy `apps/web/dist` to the `minsk-web-preview` Pages project. Verify `/healthz`, `/api/v1/samples`, baseline evaluation, intervention, safeguard, certificate, and benchmark through the deployed browser interface. Keep existing Cloudflare resources until retirement is authorized.
+Preview model availability is controlled entirely by server-side configuration. `MODEL_CALLS_ENABLED`, `WONDER_ENABLED`, `BASETEN_CHALLENGER_ENABLED`, credit-confirmation settings and server secrets must all be present before live calls work. `/api/v1/budget` exposes switch status and metered accounting without revealing secrets. A model provider may still reject a request or report no usage; those cases remain visible to callers and in ledger telemetry.
 
-The existing Cloudflare account has a paid Workers plan. The owner authorized use within its current budget. The application ledger does not cap Cloudflare charges. Public model calls remain disabled on the preview.
+The preview is not production. Do not change production routes, retire resources, or expose provider keys while validating a preview deployment.
