@@ -7,7 +7,7 @@ import {EligibleOpenWeightInvestigator,ChallengerError} from './challenger';
 import {runBenchmark} from './benchmark';
 export {BudgetLedger};
 
-interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; BASETEN_TEST_TOKEN?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
+interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; BASETEN_TEST_TOKEN?:string; MINSK_EVAL_TOKEN?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
 const MAX_BODY=60000;
 class HttpError extends Error {constructor(public status:number,message:string){super(message);}}
 const bodySchema=z.object({workflow:WorkflowSchema,intervention:InterventionSchema.optional()});
@@ -15,7 +15,7 @@ const verifySchema=bodySchema.extend({intervention:InterventionSchema,stepId:z.s
 function reply(data:unknown,status=200,headers:HeadersInit={}):Response {return Response.json(data,{status,headers});}
 async function readJson(request:Request):Promise<unknown> { const size=Number(request.headers.get('content-length')??0); if(size>MAX_BODY) throw new HttpError(413,'Request body too large'); const raw=await request.text(); if(raw.length>MAX_BODY) throw new HttpError(413,'Request body too large'); try{return JSON.parse(raw);}catch{throw new HttpError(400,'Invalid JSON request body');} }
 function cors(request:Request,env:Env):Headers {const headers=new Headers(); const origin=request.headers.get('origin'); if(origin&&origin===env.ALLOWED_ORIGIN){headers.set('Access-Control-Allow-Origin',origin);headers.set('Vary','Origin');headers.set('Access-Control-Allow-Headers','Content-Type,X-Minsk-Session');headers.set('Access-Control-Allow-Methods','GET,POST,OPTIONS');} return headers;}
-function clientKey(request:Request):string {const trusted=request.headers.get('CF-Connecting-IP');return trusted&&trusted.length<64?trusted:'unknown';}
+function clientKey(request:Request,env:Env):string {if(env.MINSK_EVAL_TOKEN&&request.headers.get('X-Minsk-Eval-Token')===env.MINSK_EVAL_TOKEN)return 'eval:controlled';const trusted=request.headers.get('CF-Connecting-IP');return trusted&&trusted.length<64?trusted:'unknown';}
 function modelReady(env:Env):boolean {return env.MODEL_CALLS_ENABLED==='true'&&env.META_CREDITS_CONFIRMED==='true'&&env.META_BILLING_MODE==='Standard'&&!!env.MODEL_API_KEY;}
 async function sample():Promise<Workflow> { const {missingApproval}=await import('../../../fixtures/workflows/missing-approval'); return missingApproval; }
 type ModelItem={type?:string;name?:string;call_id?:string;arguments?:string;content?:Array<{type?:string;text?:string}>;encrypted_content?:string;summary?:unknown[]};
@@ -87,7 +87,7 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
   const id=crypto.randomUUID();const headers=cors(request,env);headers.set('X-Correlation-ID',id);
   try {const url=new URL(request.url);if(request.headers.get('origin')&&request.headers.get('origin')!==env.ALLOWED_ORIGIN)return reply({error:'Origin not allowed',correlationId:id},403,headers);if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/healthz')return reply({status:'ok'},200,headers);
-    const client=clientKey(request);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');
+    const client=clientKey(request,env);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');
     if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),openWeightEnabled:env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY&&!!env.BASETEN_TEST_TOKEN,mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
     if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample()]},200,headers);
     if(url.pathname==='/api/v1/benchmark'&&request.method==='GET')return reply(await runBenchmark(),200,headers);
