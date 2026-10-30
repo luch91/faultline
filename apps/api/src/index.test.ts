@@ -1,7 +1,7 @@
 import {describe,it,expect,vi} from 'vitest';
 import api from './index';
 import {missingApproval,missingApprovalIntervention} from '../../../fixtures/workflows/missing-approval';
-import {hash} from '@faultline/simulator';
+import {hash} from '@minsk/simulator';
 
 const ledger:{admit:()=>Promise<{allowed:boolean;reason?:string}>;getAttestation:()=>Promise<unknown>;status:()=>Promise<unknown>}={admit:async()=>({allowed:true}),getAttestation:async()=>null,status:async()=>({conservativeAccountedUsd:0})};
 const env={BUDGET:{getByName:()=>ledger}} as unknown as Parameters<typeof api.fetch>[1];
@@ -36,11 +36,11 @@ describe('deterministic HTTP flow',()=>{
   it('checks preflight origin without consuming the application rate limit',async()=>{
     const original=ledger.admit;let admissions=0;
     ledger.admit=async()=>{admissions++;return {allowed:true};};
-    const configured={...env,ALLOWED_ORIGIN:'https://faultline.example'};
+    const configured={...env,ALLOWED_ORIGIN:'https://minsk.example'};
     try{
-      const allowed=await api.fetch(new Request('http://localhost/api/v1/experiments/run',{method:'OPTIONS',headers:{Origin:'https://faultline.example'}}),configured);
+      const allowed=await api.fetch(new Request('http://localhost/api/v1/experiments/run',{method:'OPTIONS',headers:{Origin:'https://minsk.example'}}),configured);
       expect(allowed.status).toBe(204);
-      expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://faultline.example');
+      expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://minsk.example');
       const denied=await api.fetch(new Request('http://localhost/api/v1/experiments/run',{method:'OPTIONS',headers:{Origin:'https://other.example'}}),configured);
       expect(denied.status).toBe(403);
       expect(admissions).toBe(0);
@@ -100,7 +100,7 @@ describe('deterministic HTTP flow',()=>{
     const original=globalThis.fetch;
     globalThis.fetch=vi.fn(async()=>Response.json({id:'baseten-mocked',choices:[{message:{content:JSON.stringify({candidates:[{conditionId:'human-approval',replacementValue:false,reason:'Test missing approval'}]})}}],usage:{prompt_tokens:100,completion_tokens:50}}));
     try{
-      const response=await api.fetch(new Request('http://localhost/api/v1/challengers/open-weight',{method:'POST',headers:{'Content-Type':'application/json','X-Faultline-Test-Token':'private-test-token'},body:JSON.stringify({workflow:missingApproval})}),configured);
+      const response=await api.fetch(new Request('http://localhost/api/v1/challengers/open-weight',{method:'POST',headers:{'Content-Type':'application/json','X-Minsk-Test-Token':'private-test-token'},body:JSON.stringify({workflow:missingApproval})}),configured);
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({challenger:{modelId:'meta-models/muse-spark-open-1026',responseId:'baseten-mocked'},experiments:[{result:{outcome:'UNSAFE_EXECUTION'}}]});
     }finally{globalThis.fetch=original;}

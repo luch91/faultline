@@ -1,0 +1,103 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-07",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-07",
+    "title": "Correctly protected workflow",
+    "sourceDocuments": [
+      {
+        "id": "mfb-07-source",
+        "text": "Policy: production deployment requires human approval. Automation: deployment checks human approval. Observation: human approval is recorded.",
+        "contentHash": "552ae54fb88112008728bf282a79fca5a73079217086f081f50a8494fd5a1ca1",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "human approval",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-07-source",
+            "startOffset": 101,
+            "endOffset": 141,
+            "excerpt": "Observation: human approval is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires human approval.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-07-source",
+            "startOffset": 0,
+            "endOffset": 54,
+            "excerpt": "Policy: production deployment requires human approval.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-07-source",
+            "startOffset": 55,
+            "endOffset": 100,
+            "excerpt": "Automation: deployment checks human approval.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-07-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of human approval",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": null,
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": true,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "SAFE_BLOCK",
+    "afterSafeguard": "SAFE_BLOCK",
+    "trace": [
+      "BLOCKED"
+    ],
+    "justification": "The required approval gate blocks deployment when approval is absent."
+  }
+}

@@ -1,25 +1,9 @@
-# Staging deployment
+# Minsk preview deployment
 
-The public deterministic preview is at https://faultline-web-preview.pages.dev. The API Worker is at https://faultline-api-preview.judithorluchee.workers.dev. These addresses were verified on October 27, 2026.
+The Minsk-named preview has not yet been deployed or verified. The previous frontend preview belongs to the rejected design and must not be presented as this branch.
 
-The Pages project is a separate direct-upload staging project. Its frontend build sets `VITE_API_URL` to the preview Worker URL. The Worker uses `apps/api/wrangler.preview.jsonc`. Both public preview Workers have live model calls disabled while the multi-model integration is being verified. Meta's Standard-mode key may remain stored as a Worker secret, but the model route refuses requests while its switch is off. The $100 internal ledger ceiling, daily and per-client allowances, and request throttling remain in code. Promotional-credit expiry or exhaustion must be monitored in Meta Billing; the Worker cannot verify that balance automatically.
+The proposed Worker configuration is `apps/api/wrangler.preview.jsonc`. It disables Meta and Baseten inference. Its `ALLOWED_ORIGIN` must match the actual Pages deployment URL before public testing. The Worker has a Durable Object budget binding, but no model secret is required for deterministic preview routes.
 
-The authorized Cloudflare account is on an existing Workers Paid plan. Cloudflare can charge for usage beyond the plan's included allowances. The preview has no Cloudflare account-level spend cap, so its public availability does not guarantee zero additional charges. The owner confirmed current usage is within the account budget.
+Build and deploy only from a validated commit on the authorized Cloudflare account. Create the `minsk-web-preview` Pages project if it does not exist, then configure `VITE_API_URL` to the verified Worker URL. Verify `/healthz`, `/api/v1/samples`, baseline evaluation, intervention, safeguard, certificate, and benchmark through the deployed browser interface. Keep existing Cloudflare resources until the replacement is verified and retirement is authorized.
 
-To rebuild and deploy the preview from a validated commit in PowerShell:
-
-```powershell
-pnpm --filter @faultline/api exec wrangler deploy --config wrangler.preview.jsonc
-$env:VITE_API_URL='https://faultline-api-preview.judithorluchee.workers.dev'
-pnpm --filter @faultline/web build
-pnpm --filter @faultline/api exec wrangler pages deploy ../web/dist --project-name faultline-web-preview --branch main
-```
-
-Run the browser journey against the deployment:
-
-```powershell
-$env:FAULTLINE_STAGING_URL='https://faultline-web-preview.pages.dev'
-pnpm e2e
-```
-
-The deployment is a hypothetical workflow simulator. It does not execute deployments or guarantee production safety. Public live inference requires a separate security and billing review.
+The existing Cloudflare account has a paid Workers plan. The owner authorized use within its current budget. The application ledger does not cap Cloudflare charges. Public model calls remain disabled on the preview.

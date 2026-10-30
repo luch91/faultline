@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "faultline-api-preview",
+  "name": "minsk-api-preview",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-26",
   "vars": {
@@ -9,7 +9,7 @@
     "BASETEN_CHALLENGER_ENABLED": "false",
     "META_CREDITS_CONFIRMED": "true",
     "META_BILLING_MODE": "Standard",
-    "ALLOWED_ORIGIN": "https://faultline-web-preview.pages.dev"
+    "ALLOWED_ORIGIN": "https://minsk-web-preview.pages.dev"
   },
   "durable_objects": {
     "bindings": [{ "name": "BUDGET", "class_name": "BudgetLedger" }]

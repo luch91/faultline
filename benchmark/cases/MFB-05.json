@@ -1,0 +1,104 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-05",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-05",
+    "title": "Release branch restriction missing",
+    "sourceDocuments": [
+      {
+        "id": "mfb-05-source",
+        "text": "Policy: production deployment requires approved release branch. Automation: deployment checks no condition gates. Observation: approved release branch is recorded.",
+        "contentHash": "361a03bc9adb66605178d06bb7fb1c7adb3fd980b8eea355b4b6d5d862460c0b",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "approved release branch",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-05-source",
+            "startOffset": 114,
+            "endOffset": 163,
+            "excerpt": "Observation: approved release branch is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires approved release branch.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-05-source",
+            "startOffset": 0,
+            "endOffset": 63,
+            "excerpt": "Policy: production deployment requires approved release branch.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-05-source",
+            "startOffset": 64,
+            "endOffset": 113,
+            "excerpt": "Automation: deployment checks no condition gates.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-05-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of approved release branch",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": {
+    "stepId": "deploy-production",
+    "conditionId": "condition-1"
+  },
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": false,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "UNSAFE_EXECUTION",
+    "afterSafeguard": "SAFE_BLOCK",
+    "trace": [
+      "EXECUTED"
+    ],
+    "justification": "The policy requires an approved branch but the deployment gate does not enforce it."
+  }
+}

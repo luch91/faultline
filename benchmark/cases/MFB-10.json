@@ -1,0 +1,122 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-10",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-10",
+    "title": "Multi-step dependency failure",
+    "sourceDocuments": [
+      {
+        "id": "mfb-10-source",
+        "text": "Policy: production deployment requires passing tests. Automation: deployment checks no condition gates. Observation: passing tests is recorded. Test step: passing tests is required before deployment.",
+        "contentHash": "3896b423672fec28a6942f9abc1c0e1ea54515e4da304fdd647022e4b6216563",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "passing tests",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-10-source",
+            "startOffset": 104,
+            "endOffset": 143,
+            "excerpt": "Observation: passing tests is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires passing tests.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-10-source",
+            "startOffset": 0,
+            "endOffset": 53,
+            "excerpt": "Policy: production deployment requires passing tests.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "test-step",
+        "name": "Run tests",
+        "actionType": "CHECK",
+        "dependsOn": [],
+        "executionGateIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-10-source",
+            "startOffset": 144,
+            "endOffset": 199,
+            "excerpt": "Test step: passing tests is required before deployment.",
+            "verified": true
+          }
+        ]
+      },
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [
+          "test-step"
+        ],
+        "executionGateIds": [],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-10-source",
+            "startOffset": 54,
+            "endOffset": 103,
+            "excerpt": "Automation: deployment checks no condition gates.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-10-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of passing tests",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": null,
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": false,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "SAFE_BLOCK",
+    "afterSafeguard": "SAFE_BLOCK",
+    "trace": [
+      "BLOCKED",
+      "BLOCKED"
+    ],
+    "justification": "The failed test step blocks its dependent deployment before execution."
+  }
+}

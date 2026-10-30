@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import type {Workflow} from '@faultline/contracts';
+import type {Workflow} from '@minsk/contracts';
 import {BudgetLedger} from './budget';
 
 export const BASETEN_MODEL='meta-models/muse-spark-open-1026' as const;

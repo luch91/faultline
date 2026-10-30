@@ -1,0 +1,104 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-02",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-02",
+    "title": "Required tests bypassed",
+    "sourceDocuments": [
+      {
+        "id": "mfb-02-source",
+        "text": "Policy: production deployment requires passing tests. Automation: deployment checks no condition gates. Observation: passing tests is recorded.",
+        "contentHash": "71a2c17a270ec13952823d877368a59c3df10f427ca510c2f586c41b4b25ce42",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "passing tests",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-02-source",
+            "startOffset": 104,
+            "endOffset": 143,
+            "excerpt": "Observation: passing tests is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires passing tests.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-02-source",
+            "startOffset": 0,
+            "endOffset": 53,
+            "excerpt": "Policy: production deployment requires passing tests.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-02-source",
+            "startOffset": 54,
+            "endOffset": 103,
+            "excerpt": "Automation: deployment checks no condition gates.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-02-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of passing tests",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": {
+    "stepId": "deploy-production",
+    "conditionId": "condition-1"
+  },
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": false,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "UNSAFE_EXECUTION",
+    "afterSafeguard": "SAFE_BLOCK",
+    "trace": [
+      "EXECUTED"
+    ],
+    "justification": "The deployment proceeds after mandatory tests fail because the execution gate omits the test condition."
+  }
+}

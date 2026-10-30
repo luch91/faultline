@@ -1,4 +1,4 @@
-import type { Workflow } from '@faultline/contracts';
+import type { Workflow } from '@minsk/contracts';
 
 export const modelRegistry = {
   'muse-spark-1.3': {

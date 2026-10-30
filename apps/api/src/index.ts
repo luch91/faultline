@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { WorkflowSchema, InterventionSchema, CounterexampleCertificateSchema, type Workflow } from '@faultline/contracts';
-import { evaluate, verifySafeguard, validateWorkflow, hash } from '@faultline/simulator';
+import { WorkflowSchema, InterventionSchema, CounterexampleCertificateSchema, type Workflow } from '@minsk/contracts';
+import { evaluate, verifySafeguard, validateWorkflow, hash } from '@minsk/simulator';
 import {BudgetLedger,estimateMicroUsd,actualMicroUsd,type ModelCallAttestation} from './budget';
 import {modelConfig,routeInvestigation,type ModelId} from './models';
 import {EligibleOpenWeightInvestigator,ChallengerError} from './challenger';
+import {runBenchmark} from './benchmark';
 export {BudgetLedger};
 
 interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; BASETEN_TEST_TOKEN?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
@@ -13,7 +14,7 @@ const bodySchema=z.object({workflow:WorkflowSchema,intervention:InterventionSche
 const verifySchema=bodySchema.extend({intervention:InterventionSchema,stepId:z.string(),conditionId:z.string()});
 function reply(data:unknown,status=200,headers:HeadersInit={}):Response {return Response.json(data,{status,headers});}
 async function readJson(request:Request):Promise<unknown> { const size=Number(request.headers.get('content-length')??0); if(size>MAX_BODY) throw new HttpError(413,'Request body too large'); const raw=await request.text(); if(raw.length>MAX_BODY) throw new HttpError(413,'Request body too large'); try{return JSON.parse(raw);}catch{throw new HttpError(400,'Invalid JSON request body');} }
-function cors(request:Request,env:Env):Headers {const headers=new Headers(); const origin=request.headers.get('origin'); if(origin&&origin===env.ALLOWED_ORIGIN){headers.set('Access-Control-Allow-Origin',origin);headers.set('Vary','Origin');headers.set('Access-Control-Allow-Headers','Content-Type,X-Faultline-Session');headers.set('Access-Control-Allow-Methods','GET,POST,OPTIONS');} return headers;}
+function cors(request:Request,env:Env):Headers {const headers=new Headers(); const origin=request.headers.get('origin'); if(origin&&origin===env.ALLOWED_ORIGIN){headers.set('Access-Control-Allow-Origin',origin);headers.set('Vary','Origin');headers.set('Access-Control-Allow-Headers','Content-Type,X-Minsk-Session');headers.set('Access-Control-Allow-Methods','GET,POST,OPTIONS');} return headers;}
 function clientKey(request:Request):string {const trusted=request.headers.get('CF-Connecting-IP');return trusted&&trusted.length<64?trusted:'unknown';}
 function modelReady(env:Env):boolean {return env.MODEL_CALLS_ENABLED==='true'&&env.META_CREDITS_CONFIRMED==='true'&&env.META_BILLING_MODE==='Standard'&&!!env.MODEL_API_KEY;}
 async function sample():Promise<Workflow> { const {missingApproval}=await import('../../../fixtures/workflows/missing-approval'); return missingApproval; }
@@ -89,6 +90,7 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
     const client=clientKey(request);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');
     if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),openWeightEnabled:env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY&&!!env.BASETEN_TEST_TOKEN,mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
     if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample()]},200,headers);
+    if(url.pathname==='/api/v1/benchmark'&&request.method==='GET')return reply(await runBenchmark(),200,headers);
     if(request.method!=='POST')return reply({error:'Route not found',correlationId:id},404,headers);
     const data=await readJson(request);
     if(url.pathname==='/api/v1/workflows/validate')return reply({workflow:validateWorkflow(data)},200,headers);
@@ -98,7 +100,7 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
     if(url.pathname==='/api/v1/investigations'){const {workflow}=z.object({workflow:WorkflowSchema}).parse(data);const ledger=env.BUDGET.getByName('project');if(!await ledger.acquireInvestigation())throw new HttpError(429,'An investigation is already running');try{return reply(await investigate(workflow,env,request.signal,client),200,headers);}finally{await ledger.releaseInvestigation();}}
     if(url.pathname==='/api/v1/challengers/open-weight'){
       if(env.BASETEN_CHALLENGER_ENABLED!=='true'||env.BASETEN_CREDITS_CONFIRMED!=='true'||!env.BASETEN_API_KEY)throw new HttpError(503,'Open-weight challenger is disabled');
-      if(!env.BASETEN_TEST_TOKEN||request.headers.get('X-Faultline-Test-Token')!==env.BASETEN_TEST_TOKEN)throw new HttpError(403,'Challenger access denied');
+      if(!env.BASETEN_TEST_TOKEN||request.headers.get('X-Minsk-Test-Token')!==env.BASETEN_TEST_TOKEN)throw new HttpError(403,'Challenger access denied');
       const x=z.object({workflow:WorkflowSchema,hosted:z.object({investigationId:z.string().uuid(),intervention:InterventionSchema}).optional()}).parse(data);
       const graph=validateWorkflow(x.workflow);
       const ledger=env.BUDGET.getByName('project');

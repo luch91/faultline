@@ -1,0 +1,104 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-03",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-03",
+    "title": "Migration compatibility bypass",
+    "sourceDocuments": [
+      {
+        "id": "mfb-03-source",
+        "text": "Policy: production deployment requires migration compatibility. Automation: deployment checks no condition gates. Observation: migration compatibility is recorded.",
+        "contentHash": "0256a023bd1fe86a686c3470bbb647e7b7629c7a92c60ccdbfd9370ee0412c6a",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "migration compatibility",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-03-source",
+            "startOffset": 114,
+            "endOffset": 163,
+            "excerpt": "Observation: migration compatibility is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires migration compatibility.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-03-source",
+            "startOffset": 0,
+            "endOffset": 63,
+            "excerpt": "Policy: production deployment requires migration compatibility.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-03-source",
+            "startOffset": 64,
+            "endOffset": 113,
+            "excerpt": "Automation: deployment checks no condition gates.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-03-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of migration compatibility",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": {
+    "stepId": "deploy-production",
+    "conditionId": "condition-1"
+  },
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": false,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "UNSAFE_EXECUTION",
+    "afterSafeguard": "SAFE_BLOCK",
+    "trace": [
+      "EXECUTED"
+    ],
+    "justification": "A failed mandatory compatibility check is absent from the execution gate."
+  }
+}

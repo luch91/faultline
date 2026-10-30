@@ -1,5 +1,5 @@
 {
-  "name": "faultline",
+  "name": "minsk",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,11 +8,12 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "benchmark": "pnpm --filter @minsk/simulator benchmark",
     "e2e": "playwright test",
     "lint": "pnpm -r lint",
     "check:content": "node scripts/check-content.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "dev": "node scripts/start-visual-preview.mjs"
+    "dev": "pnpm --parallel --filter @minsk/api --filter @minsk/web dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
