@@ -51,7 +51,7 @@ async function investigate(graph:Workflow,env:Env,signal:AbortSignal,client:stri
   validateWorkflow(graph);
   const routing=routeInvestigation(graph,env.WONDER_ENABLED==='true');
   let selectedModel=forcedModel??routing.modelId;
-  let selectedRole=forcedModel?'ADVANCED_INVESTIGATION' as const:routing.role;
+  let selectedRole=forcedModel?(forcedModel==='muse-wonder-1.0'?'ADVANCED_INVESTIGATION' as const:'ROUTINE_INVESTIGATION' as const):routing.role;
   let routingReason=forcedModel?`Controlled evaluation of ${forcedModel}`:routing.reason;
   const candidates=graph.conditions.filter(x=>typeof x.observedValue==='boolean');
   if(!candidates.length)throw new HttpError(422,'Set observed condition values before running an investigation');

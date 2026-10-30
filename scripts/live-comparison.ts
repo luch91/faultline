@@ -15,21 +15,26 @@ const request = async (path: string, body?: unknown, challenger = false): Promis
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${String(json.error ?? 'request failed')}`);
   return json;
 };
-const budget = () => request('/api/v1/budget');
+const budget = async () => { for (let attempt = 0; ; attempt++) { try { return await request('/api/v1/budget'); } catch (error) { if (attempt >= 12 || !String(error).includes('HTTP 429')) throw error; await new Promise(resolve => setTimeout(resolve, 5000)); } } };
 const startBudget = await budget();
 if (!startBudget.liveModelEnabled || !startBudget.openWeightEnabled) throw new Error('Protected local Worker does not have both providers enabled');
-const results: Result[] = [];
+let previous: { results?: Result[] } = {};
+try { previous = JSON.parse(await readFile('model-evaluation/results/comparison.json', 'utf8')) as { results?: Result[] }; } catch { /* First run. */ }
+const results: Result[] = previous.results ?? [];
 await mkdir('model-evaluation/results', { recursive: true });
-const persist = async () => {
-  const current = await budget();
-  const calls = Object.values(current.providers as Record<string, { calls: number }>).reduce((n, row) => n + row.calls, 0);
-  const conservativeUsd = Number(current.conservativeAccountedUsd) + Number(current.basetenAccountedUsd);
-  await writeFile('model-evaluation/results/comparison.json', JSON.stringify({ version: '1', labelsVersion: labels.version, timestamp: new Date().toISOString(), authorizedCeilingUsd: 10, dispatchCeiling: 80, calls, conservativeUsd, startBudget: { metaUsd: startBudget.conservativeAccountedUsd, basetenUsd: startBudget.basetenAccountedUsd }, budget: current, results }, null, 2) + '\n');
+let current = startBudget;
+const persist = async (refresh = false) => {
+  if (refresh) current = await budget();
+  const calls = Number(current.evaluation?.calls ?? 0);
+  const conservativeUsd = Number(current.evaluation?.conservativeUsd ?? NaN);
+  if (!Number.isFinite(conservativeUsd)) throw new Error('Worker did not report conservative evaluation accounting');
+  await writeFile('model-evaluation/results/comparison.json', JSON.stringify({ version: '1', labelsVersion: labels.version, timestamp: new Date().toISOString(), authorizedCeilingUsd: 10, dispatchCeiling: 80, calls, conservativeUsd, usagePricedUsd: current.evaluation?.usagePricedUsd, startBudget: { metaUsd: startBudget.conservativeAccountedUsd, basetenUsd: startBudget.basetenAccountedUsd }, budget: current, results }, null, 2) + '\n');
   if (calls >= 80 || conservativeUsd >= 10) throw new Error('Evaluation dispatch or estimate ceiling reached');
 };
 const run = async (caseId: string, method: string, model: string, fn: () => Promise<Omit<Result, 'caseId' | 'method' | 'model' | 'latencyMs'>>): Promise<void> => {
+  if (results.some(item => item.caseId === caseId && item.method === method && item.model === model)) return;
   const begin = performance.now();
-  try { results.push({ caseId, method, model, latencyMs: Math.round(performance.now() - begin), ...await fn() }); }
+  try { const outcome = await fn(); results.push({ caseId, method, model, latencyMs: Math.round(performance.now() - begin), ...outcome }); }
   catch (error) { results.push({ caseId, method, model, latencyMs: Math.round(performance.now() - begin), status: 'ERROR', error: error instanceof Error ? error.message : String(error) }); }
   await persist();
   const last = results.at(-1)!;
@@ -52,7 +57,8 @@ for (const spec of heldoutSpecs) {
     const main = extracted.conditions.find(x => x.name.toLowerCase().includes(spec.requirement.toLowerCase()));
     const policy = extracted.policyRules.some(x => !!main && x.requiredConditionIds.includes(main.id));
     const gate = extracted.steps.some(x => !!main && x.executionGateIds.includes(main.id));
-    const correct = !!main && policy && gate === spec.mainGate && grounded;
+    const observationCorrect = !!main && main.observedValue === spec.mainObserved;
+    const correct = !!main && observationCorrect && policy && gate === spec.mainGate && grounded;
     return { status: correct ? 'PASS' : 'FAIL', grounded, outcomeCorrect: correct, usage: response.model?.usage, response: { workflow: extracted, model: response.model } };
   });
   for (const modelId of ['muse-spark-1.3', 'muse-wonder-1.0'] as const) {
@@ -82,6 +88,39 @@ for (const spec of heldoutSpecs) {
     const outcomeCorrect = !!selectedTarget && parsed.predictedOutcome === label.outcome && actualOutcome === label.outcome;
     return { status: outcomeCorrect ? 'PASS' : 'FAIL', selectedTarget, actualOutcome, predictedOutcome: parsed.predictedOutcome, outcomeCorrect, usage: response.usage, response };
   });
+  await persist(true);
 }
-await persist();
+for (const id of ['H01', 'H07']) {
+  const spec = heldoutSpecs.find(item => item.id === id)!;
+  const { workflow, targetId } = heldoutWorkflow(spec);
+  const label = labels.cases[id];
+  for (const modelId of ['muse-spark-1.3', 'muse-wonder-1.0'] as const) {
+    await run(id, 'assisted-repeat', modelId, async () => {
+      const response = await request('/api/v1/evaluation/investigate', { workflow, modelId });
+      const selectedTarget = response.intervention?.targetConditionId === targetId && response.intervention?.replacementValue === false;
+      const actualOutcome = response.failure?.outcome;
+      const verifiedRepair = response.verification?.repaired?.outcome === 'SAFE_BLOCK' && response.verification?.resolved === true;
+      const outcomeCorrect = selectedTarget && actualOutcome === label.outcome;
+      return { status: outcomeCorrect && (!label.repair || verifiedRepair) ? 'PASS' : 'FAIL', selectedTarget, actualOutcome, outcomeCorrect, verifiedRepair, usage: response.model?.usage, response };
+    });
+  }
+  await run(id, 'challenger-repeat', 'meta-models/muse-spark-open-1026', async () => {
+    const response = await request('/api/v1/challengers/open-weight', { workflow }, true);
+    const candidate = (response.experiments as Array<any>).find(item => item.intervention.targetConditionId === targetId && item.intervention.replacementValue === false);
+    const actualOutcome = candidate?.result?.outcome;
+    return { status: actualOutcome === label.outcome ? 'PASS' : 'FAIL', selectedTarget: !!candidate, actualOutcome, outcomeCorrect: actualOutcome === label.outcome, usage: response.challenger?.usage, response };
+  });
+  await run(id, 'model-only-repeat', 'muse-spark-1.3', async () => {
+    const response = await request('/api/v1/evaluation/model-only', { workflow, modelId: 'muse-spark-1.3' });
+    let parsed: Record<string, any> = {};
+    try { parsed = JSON.parse(response.output); } catch { /* Invalid output is scored as failure. */ }
+    const selected = workflow.conditions.find(item => item.id === parsed.conditionId && typeof item.observedValue === 'boolean' && item.observedValue !== parsed.replacementValue);
+    const selectedTarget = selected?.id === targetId && parsed.replacementValue === false;
+    const actualOutcome = selected ? (await evaluate(workflow, { id: `${id}-repeat`, targetConditionId: selected.id, originalValue: selected.observedValue, replacementValue: parsed.replacementValue, reason: 'Repeat check', proposedBy: 'USER', validated: true })).outcome : undefined;
+    const outcomeCorrect = !!selectedTarget && parsed.predictedOutcome === label.outcome && actualOutcome === label.outcome;
+    return { status: outcomeCorrect ? 'PASS' : 'FAIL', selectedTarget, actualOutcome, predictedOutcome: parsed.predictedOutcome, outcomeCorrect, usage: response.usage, response };
+  });
+  await persist(true);
+}
+await persist(true);
 process.stdout.write(`Completed ${results.length} scored tasks. Results: model-evaluation/results/comparison.json\n`);

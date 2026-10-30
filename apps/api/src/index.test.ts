@@ -7,6 +7,12 @@ const ledger:{admit:()=>Promise<{allowed:boolean;reason?:string}>;getAttestation
 const env={BUDGET:{getByName:()=>ledger}} as unknown as Parameters<typeof api.fetch>[1];
 async function post(path:string,body:unknown){return api.fetch(new Request(`http://localhost${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),env);}
 describe('deterministic HTTP flow',()=>{
+  it('keeps controlled comparison routes inaccessible without the private evaluation token',async()=>{
+    const assisted=await post('/api/v1/evaluation/investigate',{workflow:missingApproval,modelId:'muse-wonder-1.0'});
+    const direct=await post('/api/v1/evaluation/model-only',{workflow:missingApproval,modelId:'muse-spark-1.3'});
+    expect(assisted.status).toBe(403);
+    expect(direct.status).toBe(403);
+  });
   it('serves the sample and evaluates a counterfactual without model transport',async()=>{
     const sample=await api.fetch(new Request('http://localhost/api/v1/samples'),env);
     expect(sample.status).toBe(200);
