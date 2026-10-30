@@ -46,14 +46,13 @@ Copy the names in [.env.example](.env.example) into the ignored `apps/api/.dev.v
 | `META_CEILING_MICRO_USD` | Cumulative Meta estimate ceiling | 50000000 |
 | `BASETEN_API_KEY` | Server-side Baseten key | unset |
 | `BASETEN_CHALLENGER_ENABLED` and `BASETEN_CREDITS_CONFIRMED` | Baseten controls | false |
-| `BASETEN_CEILING_MICRO_USD` | Cumulative Baseten estimate ceiling | unset, fails closed |
 | `PUBLIC_CHALLENGER_ENABLED` | Permit public challenger calls | false |
 | `BASETEN_TEST_TOKEN` | Protect challenger access | unset |
 | `MINSK_EVAL_TOKEN` | Protect controlled benchmark access | unset |
-| `MINSK_EVAL_MAX_CALLS`, `MINSK_EVAL_MAX_MICRO_USD` | Controlled evaluation ceilings | 6 calls, 300000 |
+| `MINSK_EVAL_MAX_CALLS`, `MINSK_EVAL_MAX_MICRO_USD` | Controlled evaluation dispatch limit and Meta estimate ceiling | 6 calls, 300000 |
 | `ALLOWED_ORIGIN` | Allowed browser origin | unset |
 
-Reservations, settled token estimates and unknown usage are recorded in a persistent Durable Object. The ceiling is an application control, not a provider-side billing guarantee. Check [Meta](https://dev.meta.ai/docs/pricing-rate-limits) and [Baseten](https://www.baseten.co/pricing/) rates and your account's billing conditions before enabling calls.
+Reservations, settled token estimates and unknown usage are recorded in a persistent Durable Object. Meta is constrained by the $50 application ceiling; Baseten is metered but has no application-dollar ceiling. Neither is a provider-side billing guarantee. Check [Meta](https://dev.meta.ai/docs/pricing-rate-limits) and [Baseten](https://www.baseten.co/pricing/) rates and your account's billing conditions before enabling calls.
 
 ## Benchmarks and certificates
 
