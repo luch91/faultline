@@ -12,7 +12,10 @@ if(provider!=='meta'&&!process.env.MINSK_EVAL_TEST_TOKEN)throw new Error('Set MI
 const labels=JSON.parse(await readFile('model-evaluation/ground-truth.json','utf8')) as {version:string;cases:Record<string,{outcome:string;repair:string|null;basis:string}>};
 const rows:Array<Record<string,unknown>>=[];
 await mkdir('model-evaluation/results',{recursive:true});
-const filename=`model-evaluation/results/benchmark-${new Date().toISOString().replaceAll(':','-')}.json`;
+const resumeIndex=args.indexOf('--resume');
+const filename=resumeIndex>=0?args[resumeIndex+1]:`model-evaluation/results/benchmark-${new Date().toISOString().replaceAll(':','-')}.json`;
+if(!filename||!/^model-evaluation\/results\/benchmark-[A-Za-z0-9T.\-]+\.json$/.test(filename))throw new Error('Resume path must identify a benchmark result in model-evaluation/results');
+if(resumeIndex>=0){const previous=JSON.parse(await readFile(filename,'utf8')) as {provider:string;labelsVersion:string;rows:Array<Record<string,unknown>>};if(previous.provider!==provider||previous.labelsVersion!==labels.version)throw new Error('Resume configuration does not match');rows.push(...previous.rows.filter(row=>!/^HTTP (402|429):/.test(String(row.error??''))));}
 async function persist(data:Record<string,unknown>){await writeFile(filename,JSON.stringify({version:'1',timestamp:new Date().toISOString(),provider,labelsVersion:labels.version,rows,...data},null,2)+'\n');}
 async function call(path:string,body?:unknown){
   const start=performance.now();
@@ -39,6 +42,7 @@ for(const spec of heldoutSpecs){
   }
   if(provider!=='meta')tasks.push({name:'baseten',path:'/api/v1/challengers/open-weight',body:{workflow}});
   for(const task of tasks){
+    if(rows.some(row=>row.caseId===spec.id&&row.task===task.name))continue;
     try{
       const {data,latencyMs}=await call(task.path,task.body);
       let outcome:string|null=null;let targetMatched:boolean|null=null;let repairVerified:boolean|null=null;let extractionCorrect:boolean|null=null;

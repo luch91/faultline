@@ -1,15 +1,21 @@
 import { z } from 'zod';
 import { WorkflowSchema, InterventionSchema, CounterexampleCertificateSchema, type Workflow } from '@minsk/contracts';
 import { evaluate, verifySafeguard, validateWorkflow, hash } from '@minsk/simulator';
-import {BudgetLedger,estimateMicroUsd,actualMicroUsd,type ModelCallAttestation} from './budget';
+import {BudgetLedger,estimateMicroUsd,actualMicroUsd,providerCeiling,type ModelCallAttestation} from './budget';
 import {modelConfig,routeInvestigation,type ModelId} from './models';
 import {EligibleOpenWeightInvestigator,ChallengerError} from './challenger';
 import {normalizeObservation} from './observation';
 import {eligibleInvestigationTargets} from './investigation-target';
 import {runBenchmark} from './benchmark';
+import {verifyCertificate} from '@minsk/simulator/certificate';
+import sample02 from '../../../benchmark/cases/MFB-02.json';
+import sample07 from '../../../benchmark/cases/MFB-07.json';
+import sample08 from '../../../benchmark/cases/MFB-08.json';
+import sample09 from '../../../benchmark/cases/MFB-09.json';
+import historicalScores from '../../../model-evaluation/scored-2026-10-30.json';
 export {BudgetLedger};
 
-interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; PUBLIC_CHALLENGER_ENABLED?:string; BASETEN_TEST_TOKEN?:string; MINSK_EVAL_TOKEN?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
+interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; PUBLIC_CHALLENGER_ENABLED?:string; BASETEN_CEILING_MICRO_USD?:string; BASETEN_TEST_TOKEN?:string; MINSK_EVAL_TOKEN?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
 const MAX_BODY=60000;
 class HttpError extends Error {constructor(public status:number,message:string){super(message);}}
 const bodySchema=z.object({workflow:WorkflowSchema,intervention:InterventionSchema.optional()});
@@ -91,12 +97,14 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
   try {const url=new URL(request.url);if(request.headers.get('origin')&&request.headers.get('origin')!==env.ALLOWED_ORIGIN)return reply({error:'Origin not allowed',correlationId:id},403,headers);if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/healthz')return reply({status:'ok'},200,headers);
     const client=clientKey(request,env);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');
-    if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),openWeightEnabled:env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY&&!!env.BASETEN_TEST_TOKEN,publicChallengerEnabled:env.PUBLIC_CHALLENGER_ENABLED==='true'&&env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY,mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
-    if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample()]},200,headers);
+    if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),openWeightEnabled:env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY&&!!env.BASETEN_TEST_TOKEN&&providerCeiling('Baseten',env)!==null,publicChallengerEnabled:env.PUBLIC_CHALLENGER_ENABLED==='true'&&env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY&&providerCeiling('Baseten',env)!==null,mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
+    if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample(),sample02.workflow,sample07.workflow,sample08.workflow,sample09.workflow]},200,headers);
     if(url.pathname==='/api/v1/benchmark'&&request.method==='GET')return reply(await runBenchmark(),200,headers);
+    if(url.pathname==='/api/v1/evaluation/history'&&request.method==='GET')return reply({label:'Historical synthetic evaluation, 2026-10-30',distinctCases:historicalScores.distinctCases,tasks:historicalScores.scenarioModelTasks,dispatches:historicalScores.providerDispatches,groups:historicalScores.groups.map(group=>({method:group.method,model:group.model,tasks:group.tasks,successes:group.successes,errors:group.errors,confusion:group.confusion,correctAbstentions:group.correctAbstentions,verifiedRepairs:group.verifiedRepairs,extraction:group.extraction}))},200,headers);
     if(request.method!=='POST')return reply({error:'Route not found',correlationId:id},404,headers);
     const data=await readJson(request);
     if(url.pathname==='/api/v1/workflows/validate')return reply({workflow:validateWorkflow(data)},200,headers);
+    if(url.pathname==='/api/v1/reports/verify'){const x=z.object({certificate:CounterexampleCertificateSchema,workflow:WorkflowSchema.optional()}).parse(data);return reply(await verifyCertificate(x.certificate,x.workflow),200,headers);}
     if(url.pathname==='/api/v1/workflows/extract'){const {text}=z.object({text:z.string()}).parse(data);return reply(await extract(text,env,request.signal,client),200,headers);}
     if(url.pathname==='/api/v1/experiments/run'){const {workflow,intervention}=bodySchema.parse(data);return reply({kind:intervention?'COUNTERFACTUAL':'BASELINE',result:await evaluate(workflow,intervention)},200,headers);}
     if(url.pathname==='/api/v1/safeguards/verify'){const x=verifySchema.parse(data);return reply(await verifySafeguard(x.workflow,x.intervention,x.stepId,x.conditionId),200,headers);}

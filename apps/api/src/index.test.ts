@@ -66,6 +66,10 @@ describe('deterministic HTTP flow',()=>{
     expect(certificate.evaluationResult.outcome).toBe('UNSAFE_EXECUTION');
     expect(certificate.verificationResult.outcome).toBe('SAFE_BLOCK');
     expect(certificate.integrityHash).toMatch(/^[a-f0-9]{64}$/);
+    const checked=await post('/api/v1/reports/verify',{certificate,workflow:missingApproval});
+    expect(await checked.json()).toMatchObject({valid:true,inputVerified:true,provenanceAuthenticity:'NOT_VERIFIED'});
+    const modified=await post('/api/v1/reports/verify',{certificate:{...certificate,integrityHash:'0'.repeat(64)},workflow:missingApproval});
+    expect(await modified.json()).toMatchObject({valid:false});
   });
   it('rejects a cross-origin request',async()=>{
     const response=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://other.example'}}),env);
