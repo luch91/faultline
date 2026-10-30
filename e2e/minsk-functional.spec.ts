@@ -13,6 +13,8 @@ test('sample, counterfactual, safeguard, replay, certificate, and benchmark', as
   await page.getByRole('button', { name: 'Verify safeguard' }).click();
   await expect(page.getByLabel('Safeguard outcome')).toHaveText('SAFE_BLOCK');
   await expect(page.getByText('Verified: true')).toBeVisible();
+  await expect(page.getByText('Violated policy: approval-required. The tested gate blocks execution.')).toBeVisible();
+  await expect(page.getByText('TESTED EXECUTION CONTROLS')).toBeVisible();
 
   await page.getByRole('button', { name: 'Evidence', exact: true }).click();
   await page.getByRole('button', { name: 'BASELINE' }).click();
