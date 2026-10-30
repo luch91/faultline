@@ -5,9 +5,10 @@ const CEILING_MICRO_USD=100_000_000;
 const BASETEN_CEILING_MICRO_USD=10_000_000;
 const DAILY_REQUEST_LIMIT=30;
 const CLIENT_REQUEST_LIMIT=5;
-export function evaluationAdmission(count:number,costMicroUsd:number,estimatedMicroUsd:number){
-  if(count>=6)return {allowed:false,reason:'Evaluation call limit reached'};
-  if(!Number.isFinite(estimatedMicroUsd)||estimatedMicroUsd<=0||costMicroUsd+estimatedMicroUsd>300_000)return {allowed:false,reason:'Evaluation estimate ceiling reached'};
+export function evaluationAdmission(count:number,costMicroUsd:number,estimatedMicroUsd:number,limit=6,ceilingMicroUsd=300_000){
+  if(!Number.isInteger(limit)||limit<1||limit>100||!Number.isInteger(ceilingMicroUsd)||ceilingMicroUsd<1||ceilingMicroUsd>10_000_000)return {allowed:false,reason:'Invalid evaluation budget configuration'};
+  if(count>=limit)return {allowed:false,reason:'Evaluation call limit reached'};
+  if(!Number.isFinite(estimatedMicroUsd)||estimatedMicroUsd<=0||costMicroUsd+estimatedMicroUsd>ceilingMicroUsd)return {allowed:false,reason:'Evaluation estimate ceiling reached'};
   return {allowed:true};
 }
 export type ModelCallAttestation={modelId:ModelId;role:string;responseId:string|null;toolCallId:string;toolArgumentsJson?:string;toolResultJson?:string;inputTokens:number;outputTokens:number;accountingStatus:'PROVIDER_USAGE'|'UNKNOWN_USAGE';routingReason:string};
@@ -37,7 +38,8 @@ export class BudgetLedger extends DurableObject {
     this.initialize();
     if(client==='eval:controlled'){
       const used=this.ctx.storage.sql.exec<{count:number;cost:number}>('SELECT COUNT(*) AS count,COALESCE(SUM(MAX(COALESCE(actual,0),reserved)),0) AS cost FROM calls WHERE session=?',client).one();
-      const admission=evaluationAdmission(used.count,used.cost,estimatedMicroUsd);
+      const settings=this.env as {MINSK_EVAL_MAX_CALLS?:string;MINSK_EVAL_MAX_MICRO_USD?:string};
+      const admission=evaluationAdmission(used.count,used.cost,estimatedMicroUsd,settings.MINSK_EVAL_MAX_CALLS?Number(settings.MINSK_EVAL_MAX_CALLS):6,settings.MINSK_EVAL_MAX_MICRO_USD?Number(settings.MINSK_EVAL_MAX_MICRO_USD):300_000);
       if(!admission.allowed)return admission;
     }
     const day=new Date().toISOString().slice(0,10);
@@ -46,7 +48,7 @@ export class BudgetLedger extends DurableObject {
     const perClient=this.ctx.storage.sql.exec<{value:number}>('SELECT COUNT(*) AS value FROM calls WHERE session=? AND day=? AND provider=?',client,day,provider).one().value;
     const ceiling=provider==='Meta'?CEILING_MICRO_USD:BASETEN_CEILING_MICRO_USD;
     if(total+estimatedMicroUsd>ceiling)return {allowed:false,reason:`Internal ${provider} spending ceiling reached`};
-    if(daily>=DAILY_REQUEST_LIMIT||perClient>=CLIENT_REQUEST_LIMIT)return {allowed:false,reason:'Model request allowance reached'};
+    if(client!=='eval:controlled'&&(daily>=DAILY_REQUEST_LIMIT||perClient>=CLIENT_REQUEST_LIMIT))return {allowed:false,reason:'Model request allowance reached'};
     this.ctx.storage.sql.exec('INSERT INTO calls (id,day,session,reserved,actual,kind,state,model,provider) VALUES (?,?,?,?,NULL,?,\'RESERVED\',?,?)',id,day,client,estimatedMicroUsd,kind,model,provider);
     return {allowed:true};
   }
