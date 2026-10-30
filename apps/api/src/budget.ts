@@ -5,6 +5,11 @@ const CEILING_MICRO_USD=100_000_000;
 const BASETEN_CEILING_MICRO_USD=10_000_000;
 const DAILY_REQUEST_LIMIT=30;
 const CLIENT_REQUEST_LIMIT=5;
+export function evaluationAdmission(count:number,costMicroUsd:number,estimatedMicroUsd:number){
+  if(count>=6)return {allowed:false,reason:'Evaluation call limit reached'};
+  if(!Number.isFinite(estimatedMicroUsd)||estimatedMicroUsd<=0||costMicroUsd+estimatedMicroUsd>300_000)return {allowed:false,reason:'Evaluation estimate ceiling reached'};
+  return {allowed:true};
+}
 export type ModelCallAttestation={modelId:ModelId;role:string;responseId:string|null;toolCallId:string;toolArgumentsJson?:string;toolResultJson?:string;inputTokens:number;outputTokens:number;accountingStatus:'PROVIDER_USAGE'|'UNKNOWN_USAGE';routingReason:string};
 export type InvestigationAttestation={graphHash:string;interventionHash:string;stepId:string|null;conditionId:string|null;responseIds:string[];toolCallIds:string[];inputTokens:number;outputTokens:number;verificationOutcome:string|null;calls?:ModelCallAttestation[]};
 export type BillingProvider='Meta'|'Baseten';
@@ -30,6 +35,11 @@ export class BudgetLedger extends DurableObject {
   releaseInvestigation():void{this.initialize();this.ctx.storage.sql.exec('DELETE FROM investigation_lock WHERE id=1');}
   reserve(id:string,client:string,estimatedMicroUsd:number,kind:'text'|'image',model:ModelId|'meta-models/muse-spark-open-1026'='muse-spark-1.3',provider:BillingProvider='Meta'): {allowed:boolean;reason?:string} {
     this.initialize();
+    if(client==='eval:controlled'){
+      const used=this.ctx.storage.sql.exec<{count:number;cost:number}>('SELECT COUNT(*) AS count,COALESCE(SUM(MAX(COALESCE(actual,0),reserved)),0) AS cost FROM calls WHERE session=?',client).one();
+      const admission=evaluationAdmission(used.count,used.cost,estimatedMicroUsd);
+      if(!admission.allowed)return admission;
+    }
     const day=new Date().toISOString().slice(0,10);
     const total=this.ctx.storage.sql.exec<{value:number}>('SELECT COALESCE(SUM(COALESCE(actual,reserved)),0) AS value FROM calls WHERE provider=?',provider).one().value;
     const daily=this.ctx.storage.sql.exec<{value:number}>('SELECT COUNT(*) AS value FROM calls WHERE day=?',day).one().value;

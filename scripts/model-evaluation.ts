@@ -42,11 +42,11 @@ if (routeInvestigation(missingApproval, true).modelId !== 'muse-spark-1.3' || ro
 if (!live) {
   process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
 } else {
-  if (process.env.MINSK_MODEL_EVAL_AUTHORIZED !== 'true' || process.env.MINSK_EVAL_MAX_SPEND_USD !== '0.30') throw new Error('Bounded live evaluation authorization is missing');
+  if (process.env.MINSK_MODEL_EVAL_AUTHORIZED !== 'true' || process.env.MINSK_EVAL_MAX_SPEND_USD !== '0.30' || !process.env.MINSK_EVAL_TOKEN) throw new Error('Bounded live evaluation authorization or protected token is missing');
   const base = process.env.MINSK_EVAL_API_URL ?? 'http://127.0.0.1:8787';
   if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(base)) throw new Error('Live evaluation is restricted to a local protected Worker');
   const request = async (path: string, body?: unknown, token?: string) => {
-    const response = await fetch(`${base}${path}`, { method: body === undefined ? 'GET' : 'POST', headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { 'X-Minsk-Test-Token': token } : {}) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(120_000) });
+    const response = await fetch(`${base}${path}`, { method: body === undefined ? 'GET' : 'POST', headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), 'X-Minsk-Eval-Token': process.env.MINSK_EVAL_TOKEN!, ...(token ? { 'X-Minsk-Test-Token': token } : {}) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(120_000) });
     const payload = await response.json() as Record<string, unknown>;
     if (!response.ok) throw new Error(`${path}: HTTP ${response.status}: ${String(payload.error ?? 'request failed')}`);
     return payload;
