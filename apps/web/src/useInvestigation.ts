@@ -5,8 +5,9 @@ export type ModelRecord = { id: string | null; modelId: string; provider: string
 export type Investigation = { investigationId?: string; baseline: EvaluationResult; intervention: Intervention; failure: EvaluationResult; verification: { repaired: EvaluationResult; safeguard: { stepId: string; conditionId: string }; resolved: boolean } | null; trace: Array<{ id: string; tool: string; status: string; arguments: unknown; result: unknown; modelId?: string; responseId?: string | null }>; routing?: {modelId:string;reason:string;escalated:boolean}; model: ModelRecord };
 export type Scenario = 'BASELINE' | 'COUNTERFACTUAL' | 'SAFEGUARD';
 const API = import.meta.env.VITE_API_URL || '';
+function sessionId():string {try{const saved=sessionStorage.getItem('minsk-judge-session');if(saved)return saved;const created=crypto.randomUUID();sessionStorage.setItem('minsk-judge-session',created);return created;}catch{return crypto.randomUUID();}}
 async function call<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${API}${path}`, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal });
+  const response = await fetch(`${API}${path}`, { method: body ? 'POST' : 'GET', headers: { 'X-Minsk-Session': sessionId(), ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal });
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error(`API returned ${response.status} without JSON. Check the configured API URL.`);
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || `Request failed: ${response.status}`);
@@ -35,6 +36,8 @@ export function useInvestigation() {
   const [loading, setLoading] = useState(true);
   const [certificate, setCertificate] = useState<unknown>(null);
   const [benchmark, setBenchmark] = useState<unknown>(null);
+  const [certificateCheck, setCertificateCheck] = useState<{valid:boolean;inputVerified:boolean;provenanceAuthenticity:string;errors:string[]}|null>(null);
+  const [lastRun, setLastRun] = useState<{id:string;startedAt:string;durationMs:number;operation:string;status:'COMPLETED'|'FAILED'}|null>(null);
   const controller = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -54,19 +57,20 @@ export function useInvestigation() {
 
   async function run<T>(label: string, operation: (signal: AbortSignal) => Promise<T>, done: (value: T) => void) {
     controller.current?.abort(); const ac = new AbortController(); controller.current = ac; setBusy(label); setError('');
-    try { const value = await operation(ac.signal); if (!ac.signal.aborted) done(value); }
-    catch (e) { if (!ac.signal.aborted) setError(e instanceof Error ? e.message : 'Request failed'); }
+    const id=crypto.randomUUID(); const startedAt=new Date().toISOString(); const start=performance.now();
+    try { const value = await operation(ac.signal); if (!ac.signal.aborted) {done(value);setLastRun({id,startedAt,durationMs:Math.round(performance.now()-start),operation:label,status:'COMPLETED'});} }
+    catch (e) { if (!ac.signal.aborted) {setError(e instanceof Error ? e.message : 'Request failed');setLastRun({id,startedAt,durationMs:Math.round(performance.now()-start),operation:label,status:'FAILED'});} }
     finally { if (controller.current === ac) { setBusy(''); controller.current = null; } }
   }
   function reset(next: Workflow) {
-    setWorkflow(next); setSource(next.sourceDocuments[0]?.text ?? ''); setSelected(next.steps[0]?.id ?? null); setBaseline(null); setFailure(null); setVerification(null); setIntervention(null); setApplied(null); setTrace([]); setModel(null); setExtractionModel(null); setCertificate(null); setRouting(undefined); setInvestigationId(null); setScenario('BASELINE');
+    setWorkflow(next); setSource(next.sourceDocuments[0]?.text ?? ''); setSelected(next.steps[0]?.id ?? null); setBaseline(null); setFailure(null); setVerification(null); setIntervention(null); setApplied(null); setTrace([]); setModel(null); setExtractionModel(null); setCertificate(null);setCertificateCheck(null); setRouting(undefined); setInvestigationId(null); setScenario('BASELINE');
   }
   function selectWorkflow(next: Workflow) {
     if (workflow === next) return;
     reset(next);
     return run('Evaluating workflow', s => call<{ result: EvaluationResult }>('/api/v1/experiments/run', { workflow: next }, s), x => setBaseline(x.result));
   }
-  function loadWorkflowJson(text:string) { return run('Validating workflow',s=>call<{workflow:Workflow}>('/api/v1/workflows/validate',JSON.parse(text),s),x=>{void selectWorkflow(x.workflow);}); }
+  function loadWorkflowJson(text:string) { return run('Validating workflow',async s=>{const checked=await call<{workflow:Workflow}>('/api/v1/workflows/validate',JSON.parse(text),s);const evaluated=await call<{result:EvaluationResult}>('/api/v1/experiments/run',{workflow:checked.workflow},s);return {checked,evaluated};},x=>{reset(x.checked.workflow);setBaseline(x.evaluated.result);}); }
   function editCondition(id: string, value: boolean | null) { if (workflow) return selectWorkflow({ ...workflow, conditions: workflow.conditions.map(c => c.id === id ? { ...c, observedValue: value } : c) }); }
   function toggleGate(stepId: string, conditionId: string) { if (workflow) return selectWorkflow({ ...workflow, steps: workflow.steps.map(step => step.id === stepId ? { ...step, executionGateIds: step.executionGateIds.includes(conditionId) ? step.executionGateIds.filter(id => id !== conditionId) : [...step.executionGateIds, conditionId] } : step) }); }
   function selectCondition(id: string) {
@@ -91,12 +95,13 @@ export function useInvestigation() {
   function exportCertificate() {
     if (!workflow || !baseline || !failure || !applied) return;
     return run('Exporting certificate', s => call<unknown>('/api/v1/reports/export', { workflow, investigation: { investigationId: investigationId ?? undefined, baseline, intervention: applied, failure, verification, trace, model } }, s), report => {
-      setCertificate(report);const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'minsk-certificate.json'; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setCertificate(report);setCertificateCheck(null);const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'minsk-certificate.json'; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
   }
+  function verifyCertificate(){if(!certificate||!workflow)return;return run('Verifying certificate',s=>call<{valid:boolean;inputVerified:boolean;provenanceAuthenticity:string;errors:string[]}>('/api/v1/reports/verify',{certificate,workflow},s),setCertificateCheck);}
   function loadBenchmark(){return run('Running benchmark',s=>call<unknown>('/api/v1/benchmark',undefined,s),setBenchmark);}
   const result = scenario === 'SAFEGUARD' ? verification?.repaired ?? baseline : scenario === 'COUNTERFACTUAL' ? failure ?? baseline : baseline;
   const sceneWorkflow = workflow && scenario === 'SAFEGUARD' && verification ? { ...workflow, steps: workflow.steps.map(step => step.id === verification.safeguard.stepId && !step.executionGateIds.includes(verification.safeguard.conditionId) ? { ...step, executionGateIds: [...step.executionGateIds, verification.safeguard.conditionId] } : step) } : workflow;
-  return { samples, workflow, sceneWorkflow, selected, setSelected, source, setSource, baseline, failure, verification, intervention, applied, trace, model, extractionModel, routing, scenario, setScenario, result, busy, error, liveEnabled, loading, certificate, benchmark, loadBenchmark,loadWorkflowJson, selectWorkflow, selectCondition, editCondition, toggleGate, analyze, applyIntervention, investigate, verify, exportCertificate, cancel: () => controller.current?.abort() };
+  return { samples, workflow, sceneWorkflow, selected, setSelected, source, setSource, baseline, failure, verification, intervention, applied, trace, model, extractionModel, routing, scenario, setScenario, result, busy, error, liveEnabled, loading, certificate, certificateCheck, lastRun, benchmark, loadBenchmark,loadWorkflowJson, selectWorkflow, selectCondition, editCondition, toggleGate, analyze, applyIntervention, investigate, verify, exportCertificate, verifyCertificate, cancel: () => controller.current?.abort() };
 }
 export type InvestigationState = ReturnType<typeof useInvestigation>;

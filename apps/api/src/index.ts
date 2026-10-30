@@ -7,9 +7,15 @@ import {EligibleOpenWeightInvestigator,ChallengerError} from './challenger';
 import {normalizeObservation} from './observation';
 import {eligibleInvestigationTargets} from './investigation-target';
 import {runBenchmark} from './benchmark';
+import {verifyCertificate} from '@minsk/simulator/certificate';
+import sample02 from '../../../benchmark/cases/MFB-02.json';
+import sample07 from '../../../benchmark/cases/MFB-07.json';
+import sample08 from '../../../benchmark/cases/MFB-08.json';
+import sample09 from '../../../benchmark/cases/MFB-09.json';
+import historicalScores from '../../../model-evaluation/scored-2026-10-30.json';
 export {BudgetLedger};
 
-interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; BASETEN_TEST_TOKEN?:string; MINSK_EVAL_TOKEN?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
+interface Env { MODEL_API_KEY?:string; MODEL_CALLS_ENABLED?:string; META_CREDITS_CONFIRMED?:string; META_BILLING_MODE?:string; WONDER_ENABLED?:string; BASETEN_API_KEY?:string; BASETEN_CREDITS_CONFIRMED?:string; BASETEN_CHALLENGER_ENABLED?:string; BASETEN_TEST_TOKEN?:string; MINSK_EVAL_TOKEN?:string; PUBLIC_JUDGE_MAX_CALLS?:string; PUBLIC_JUDGE_MAX_MICRO_USD?:string; ALLOWED_ORIGIN?:string; BUDGET:DurableObjectNamespace<BudgetLedger>; }
 const MAX_BODY=60000;
 class HttpError extends Error {constructor(public status:number,message:string){super(message);}}
 const bodySchema=z.object({workflow:WorkflowSchema,intervention:InterventionSchema.optional()});
@@ -17,7 +23,7 @@ const verifySchema=bodySchema.extend({intervention:InterventionSchema,stepId:z.s
 function reply(data:unknown,status=200,headers:HeadersInit={}):Response {return Response.json(data,{status,headers});}
 async function readJson(request:Request):Promise<unknown> { const size=Number(request.headers.get('content-length')??0); if(size>MAX_BODY) throw new HttpError(413,'Request body too large'); const raw=await request.text(); if(raw.length>MAX_BODY) throw new HttpError(413,'Request body too large'); try{return JSON.parse(raw);}catch{throw new HttpError(400,'Invalid JSON request body');} }
 function cors(request:Request,env:Env):Headers {const headers=new Headers(); const origin=request.headers.get('origin'); if(origin&&origin===env.ALLOWED_ORIGIN){headers.set('Access-Control-Allow-Origin',origin);headers.set('Vary','Origin');headers.set('Access-Control-Allow-Headers','Content-Type,X-Minsk-Session');headers.set('Access-Control-Allow-Methods','GET,POST,OPTIONS');} return headers;}
-function clientKey(request:Request,env:Env):string {if(env.MINSK_EVAL_TOKEN&&request.headers.get('X-Minsk-Eval-Token')===env.MINSK_EVAL_TOKEN)return 'eval:controlled';const trusted=request.headers.get('CF-Connecting-IP');return trusted&&trusted.length<64?trusted:'unknown';}
+function clientKey(request:Request,env:Env):string {if(env.MINSK_EVAL_TOKEN&&request.headers.get('X-Minsk-Eval-Token')===env.MINSK_EVAL_TOKEN)return 'eval:controlled';const trusted=request.headers.get('CF-Connecting-IP');const ip=trusted&&trusted.length<64&&/^[0-9a-fA-F:.]+$/.test(trusted)?trusted:'unknown';const rawSession=request.headers.get('X-Minsk-Session');const session=rawSession&&/^[0-9a-fA-F-]{36}$/.test(rawSession)?rawSession:'anonymous';return `judge:${ip}:${session}`;}
 function modelReady(env:Env):boolean {return env.MODEL_CALLS_ENABLED==='true'&&env.META_CREDITS_CONFIRMED==='true'&&env.META_BILLING_MODE==='Standard'&&!!env.MODEL_API_KEY;}
 async function sample():Promise<Workflow> { const {missingApproval}=await import('../../../fixtures/workflows/missing-approval'); return missingApproval; }
 type ModelItem={type?:string;name?:string;call_id?:string;arguments?:string;content?:Array<{type?:string;text?:string}>;encrypted_content?:string;summary?:unknown[]};
@@ -90,12 +96,17 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
   try {const url=new URL(request.url);if(request.headers.get('origin')&&request.headers.get('origin')!==env.ALLOWED_ORIGIN)return reply({error:'Origin not allowed',correlationId:id},403,headers);if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(url.pathname==='/healthz')return reply({status:'ok'},200,headers);
     const client=clientKey(request,env);const admission=await env.BUDGET.getByName('project').admit(client);if(!admission.allowed)throw new HttpError(429,admission.reason??'Request rate limit exceeded');
-    if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env),openWeightEnabled:env.BASETEN_CHALLENGER_ENABLED==='true'&&env.BASETEN_CREDITS_CONFIRMED==='true'&&!!env.BASETEN_API_KEY&&!!env.BASETEN_TEST_TOKEN,mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY},...await env.BUDGET.getByName('project').status()},200,headers);
-    if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample()]},200,headers);
+    if(url.pathname==='/api/v1/budget')return reply({liveModelEnabled:modelReady(env)&&Number(env.PUBLIC_JUDGE_MAX_CALLS??0)>0&&Number(env.PUBLIC_JUDGE_MAX_MICRO_USD??0)>0,openWeightEnabled:false,mode:'Standard',configuration:{switchEnabled:env.MODEL_CALLS_ENABLED==='true',creditsConfirmed:env.META_CREDITS_CONFIRMED==='true',standardMode:env.META_BILLING_MODE==='Standard',keyPresent:!!env.MODEL_API_KEY,publicBudgetConfigured:Number(env.PUBLIC_JUDGE_MAX_CALLS??0)>0&&Number(env.PUBLIC_JUDGE_MAX_MICRO_USD??0)>0},...await env.BUDGET.getByName('project').status()},200,headers);
+    if(url.pathname==='/api/v1/samples'&&request.method==='GET')return reply({samples:[await sample(),sample02.workflow,sample07.workflow,sample08.workflow,sample09.workflow]},200,headers);
     if(url.pathname==='/api/v1/benchmark'&&request.method==='GET')return reply(await runBenchmark(),200,headers);
+    if(url.pathname==='/api/v1/evaluation/history'&&request.method==='GET')return reply({label:'Historical synthetic evaluation, 2026-10-30',distinctCases:historicalScores.distinctCases,tasks:historicalScores.scenarioModelTasks,dispatches:historicalScores.providerDispatches,groups:historicalScores.groups.map(group=>({method:group.method,model:group.model,tasks:group.tasks,successes:group.successes,errors:group.errors,confusion:group.confusion,correctAbstentions:group.correctAbstentions,verifiedRepairs:group.verifiedRepairs,extraction:group.extraction}))},200,headers);
     if(request.method!=='POST')return reply({error:'Route not found',correlationId:id},404,headers);
     const data=await readJson(request);
     if(url.pathname==='/api/v1/workflows/validate')return reply({workflow:validateWorkflow(data)},200,headers);
+    if(url.pathname==='/api/v1/reports/verify'){
+      const x=z.object({certificate:CounterexampleCertificateSchema,workflow:WorkflowSchema.optional()}).parse(data);
+      return reply(await verifyCertificate(x.certificate,x.workflow),200,headers);
+    }
     if(url.pathname==='/api/v1/workflows/extract'){const {text}=z.object({text:z.string()}).parse(data);return reply(await extract(text,env,request.signal,client),200,headers);}
     if(url.pathname==='/api/v1/experiments/run'){const {workflow,intervention}=bodySchema.parse(data);return reply({kind:intervention?'COUNTERFACTUAL':'BASELINE',result:await evaluate(workflow,intervention)},200,headers);}
     if(url.pathname==='/api/v1/safeguards/verify'){const x=verifySchema.parse(data);return reply(await verifySafeguard(x.workflow,x.intervention,x.stepId,x.conditionId),200,headers);}
