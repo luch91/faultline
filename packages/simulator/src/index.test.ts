@@ -15,6 +15,25 @@ describe('Missing Approval',()=>{
     expect((await evaluate(addExecutionGate(missingApproval,'deploy-production','human-approval'),missingApprovalIntervention,now)).id).toBe(verification.repaired.id);
   });
   it('classifies an existing approval gate as safe block',async()=>{expect((await evaluate(addExecutionGate(missingApproval,'deploy-production','human-approval'),missingApprovalIntervention,new Date('2026-10-26T18:00:00.000Z'))).outcome).toBe('SAFE_BLOCK');});
+  it('does not reward a safe block caused by an unrelated condition',async()=>{
+    const unrelated={...missingApproval.conditions[0]!,id:'unrelated-hold',name:'Unrelated hold',observedValue:false};
+    const workflow={...missingApproval,conditions:[...missingApproval.conditions,unrelated]};
+    const verification=await verifySafeguard(workflow,missingApprovalIntervention,'deploy-production','unrelated-hold');
+    expect(verification.failure.outcome).toBe('UNSAFE_EXECUTION');
+    expect(verification.repaired.outcome).toBe('SAFE_BLOCK');
+    expect(verification.relevant).toBe(false);
+    expect(verification.resolved).toBe(false);
+  });
+  it('preserves safe execution when an optional condition changes',async()=>{
+    const workflow={...missingApproval,policyRules:missingApproval.policyRules.map(rule=>({...rule,requiredConditionIds:['tests-pass']})),steps:missingApproval.steps.map(step=>({...step,executionGateIds:['tests-pass']}))};
+    const targetId='human-approval';
+    const condition=workflow.conditions.find(item=>item.id===targetId)!;
+    const intervention={id:'optional-change',targetConditionId:targetId,originalValue:condition.observedValue,replacementValue:false,reason:'Optional negative control',proposedBy:'USER' as const,validated:true};
+    expect((await evaluate(workflow,intervention)).outcome).toBe('SAFE_EXECUTION');
+    const verification=await verifySafeguard(workflow,intervention,workflow.steps[0]!.id,targetId);
+    expect(verification.repaired.outcome).toBe('SAFE_BLOCK');
+    expect(verification.resolved).toBe(false);
+  });
   it('rejects invalid graph and intervention',async()=>{
     expect(()=>validateWorkflow({...missingApproval,steps:[{...missingApproval.steps[0]!,dependsOn:['missing']}]})).toThrow('Missing step reference');
     expect(()=>validateWorkflow({...missingApproval,steps:[{...missingApproval.steps[0]!,dependsOn:['deploy-production']}]})).toThrow('Dependency cycle');

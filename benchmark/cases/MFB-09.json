@@ -1,0 +1,141 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-09",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-09",
+    "title": "Missing verification evidence",
+    "sourceDocuments": [
+      {
+        "id": "mfb-09-source",
+        "text": "Policy: production deployment requires human approval and passing tests. Automation: deployment checks human approval and passing tests. Observation: human approval is recorded. Observation: passing tests is recorded. Observation: optional notification is recorded.",
+        "contentHash": "cc1b12c9f921909d619db2936adcce22679162d4c0e90dd585d262a9c563e311",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "human approval",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": null,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-09-source",
+            "startOffset": 137,
+            "endOffset": 177,
+            "excerpt": "Observation: human approval is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      },
+      {
+        "id": "condition-2",
+        "name": "passing tests",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-09-source",
+            "startOffset": 178,
+            "endOffset": 217,
+            "excerpt": "Observation: passing tests is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      },
+      {
+        "id": "condition-3",
+        "name": "optional notification",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-09-source",
+            "startOffset": 218,
+            "endOffset": 265,
+            "excerpt": "Observation: optional notification is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires human approval and passing tests.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1",
+          "condition-2"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-09-source",
+            "startOffset": 0,
+            "endOffset": 72,
+            "excerpt": "Policy: production deployment requires human approval and passing tests.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [
+          "condition-1",
+          "condition-2"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-09-source",
+            "startOffset": 73,
+            "endOffset": 136,
+            "excerpt": "Automation: deployment checks human approval and passing tests.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-09-change",
+    "targetConditionId": "condition-3",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of optional notification",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": null,
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": true,
+  "groundTruth": {
+    "baseline": "INDETERMINATE",
+    "counterfactual": "INDETERMINATE",
+    "afterSafeguard": "INDETERMINATE",
+    "trace": [
+      "UNKNOWN"
+    ],
+    "justification": "Approval evidence is unknown. Changing an unrelated optional notification does not resolve that unknown policy condition."
+  }
+}

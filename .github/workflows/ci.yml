@@ -20,5 +20,16 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+      - run: pnpm benchmark
       - run: pnpm build
       - run: pnpm audit --audit-level high
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: minsk-browser-evidence
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore

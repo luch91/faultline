@@ -1,0 +1,14 @@
+{
+  "version": "heldout-2026-10-30-v1",
+  "lockedBeforeLiveComparison": true,
+  "cases": {
+    "H01": { "outcome": "UNSAFE_EXECUTION", "repair": "SAFE_BLOCK", "basis": "Approval is required by policy but absent from the execution gate." },
+    "H02": { "outcome": "UNSAFE_EXECUTION", "repair": "SAFE_BLOCK", "basis": "Tests are required by policy but absent from the execution gate." },
+    "H03": { "outcome": "UNSAFE_EXECUTION", "repair": "SAFE_BLOCK", "basis": "Compatibility is required by policy but absent from the execution gate." },
+    "H04": { "outcome": "UNSAFE_EXECUTION", "repair": "SAFE_BLOCK", "basis": "Security verification is required by policy but absent from the execution gate." },
+    "H05": { "outcome": "SAFE_BLOCK", "repair": null, "basis": "The canary requirement is enforced as an execution gate." },
+    "H06": { "outcome": "SAFE_BLOCK", "repair": null, "basis": "The branch requirement is enforced as an execution gate." },
+    "H07": { "outcome": "INDETERMINATE", "repair": null, "basis": "Required review evidence is unavailable; the signature change cannot settle policy compliance." },
+    "H08": { "outcome": "SAFE_EXECUTION", "repair": null, "basis": "Changing the optional signature does not violate the test policy or its gate." }
+  }
+}

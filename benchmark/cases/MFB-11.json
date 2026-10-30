@@ -1,0 +1,103 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-11",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-11",
+    "title": "Invalid dependency graph",
+    "sourceDocuments": [
+      {
+        "id": "mfb-11-source",
+        "text": "Policy: production deployment requires passing tests. Automation: deployment checks passing tests. Observation: passing tests is recorded.",
+        "contentHash": "449fee8dd0dbd88fc7362dcf07fa9fc67f49caa293e07f1fb8c423bfa9452662",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "passing tests",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-11-source",
+            "startOffset": 99,
+            "endOffset": 138,
+            "excerpt": "Observation: passing tests is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires passing tests.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-11-source",
+            "startOffset": 0,
+            "endOffset": 53,
+            "excerpt": "Policy: production deployment requires passing tests.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [
+          "missing-step"
+        ],
+        "executionGateIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-11-source",
+            "startOffset": 54,
+            "endOffset": 98,
+            "excerpt": "Automation: deployment checks passing tests.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-11-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of passing tests",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": null,
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": false,
+  "groundTruth": {
+    "baseline": "INVALID_SCENARIO",
+    "counterfactual": "INVALID_SCENARIO",
+    "afterSafeguard": null,
+    "trace": null,
+    "justification": "The deployment references a step that is not declared."
+  }
+}
