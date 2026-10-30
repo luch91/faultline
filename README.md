@@ -9,7 +9,7 @@ Minsk tests declared deployment policy against the conditions an automated workf
 
 ## Staging preview
 
-A Minsk-named preview is pending deployment and verification. The former frontend preview does not represent this branch.
+[Open the Minsk functional preview](https://minsk-web-preview.pages.dev). Its [API health endpoint](https://minsk-api-preview.judithorluchee.workers.dev/healthz) responds successfully. Live Meta and Baseten inference are disabled on this preview.
 
 ## Product demonstration
 
