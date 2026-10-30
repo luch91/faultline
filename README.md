@@ -50,9 +50,13 @@ Copy the names in [.env.example](.env.example) into the ignored `apps/api/.dev.v
 | `BASETEN_TEST_TOKEN` | Protect challenger access | unset |
 | `MINSK_EVAL_TOKEN` | Protect controlled benchmark access | unset |
 | `MINSK_EVAL_MAX_CALLS`, `MINSK_EVAL_MAX_MICRO_USD` | Controlled evaluation dispatch limit and Meta estimate ceiling | 6 calls, 300000 |
+| `PUBLIC_GLOBAL_REQUESTS_PER_MINUTE`, `PUBLIC_CLIENT_REQUESTS_PER_MINUTE` | Enforced public API request quotas | 300, 30 |
+| `PUBLIC_GLOBAL_MODEL_CALLS_PER_DAY`, `PUBLIC_CLIENT_MODEL_CALLS_PER_DAY` | Enforced public provider-dispatch quotas | 30, 5 |
 | `ALLOWED_ORIGIN` | Allowed browser origin | unset |
 
-Reservations, settled token estimates and unknown usage are recorded in a persistent Durable Object. Meta is constrained by the $50 application ceiling; Baseten is metered but has no application-dollar ceiling. Neither is a provider-side billing guarantee. Check [Meta](https://dev.meta.ai/docs/pricing-rate-limits) and [Baseten](https://www.baseten.co/pricing/) rates and your account's billing conditions before enabling calls.
+Reservations, settled token estimates and unknown usage are recorded in a persistent Durable Object. Meta is constrained by the $50 application ceiling; Baseten is metered but has no application-dollar ceiling. Public quotas are enforced globally and per browser session plus Cloudflare client IP. Neither is a provider-side billing guarantee. Check [Meta](https://dev.meta.ai/docs/pricing-rate-limits) and [Baseten](https://www.baseten.co/pricing/) rates and your account's billing conditions before enabling calls.
+
+Extracted workflows retain explicit `ALL` or `ANY` policy rules, evidence excerpts, optional freshness requirements in seconds, and optional observation timestamps. The workbench permits operators to correct those values only when evidence remains an exact excerpt of the supplied source. Stale, absent, ambiguous, and contradictory observations evaluate as unknown rather than false.
 
 ## Benchmarks and certificates
 
@@ -65,6 +69,8 @@ pnpm verify:certificate path/to/certificate.json path/to/workflow.json
 `benchmark:models` performs fresh inference against the eight locked held-out cases, using `meta`, `baseten`, or `all`. Set `MINSK_EVAL_API_URL` and `MINSK_EVAL_TOKEN`; Baseten also requires `MINSK_EVAL_TEST_TOKEN`. Use a local Worker with your own keys, or an authorized HTTPS Worker with operator-provided access tokens. Results are written to ignored `model-evaluation/results/`. A stopped run can be continued with `--resume <result-path>`. Errors are recorded; synthetic results are not real-world accuracy claims.
 
 The independent verifier recomputes integrity and, when the original workflow is supplied, verifies the source, workflow and deterministic results. Integrity does not establish issuer authenticity.
+
+`evaluation/real-configuration-cases.json` contains two read-only, independently sourced GitHub configuration evidence cases with locked `INDETERMINATE` ground truth. They test the boundary between observed workflow text and unobserved external enforcement. They are not included in synthetic accuracy metrics and do not establish real-world detection accuracy.
 
 ## API and development
 

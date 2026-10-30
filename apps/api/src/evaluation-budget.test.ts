@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {evaluationAdmission,providerCeiling} from './budget';
+import {evaluationAdmission,providerCeiling,publicQuotaLimits,quotaAdmission} from './budget';
 
 describe('provider spending configuration',()=>{
   it('defaults Meta to fifty dollars and leaves Baseten uncapped',()=>{
@@ -11,6 +11,19 @@ describe('provider spending configuration',()=>{
     expect(providerCeiling('Baseten',{})).toBe(Number.POSITIVE_INFINITY);
     expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'Infinity'})).toBeNull();
     expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'50000001'})).toBeNull();
+  });
+});
+
+describe('public quota configuration',()=>{
+  it('uses safe defaults and enforces bounded explicit public quotas',()=>{
+    expect(publicQuotaLimits({})).toEqual({globalRequestsPerMinute:300,clientRequestsPerMinute:30,globalModelCallsPerDay:30,clientModelCallsPerDay:5});
+    expect(publicQuotaLimits({PUBLIC_GLOBAL_REQUESTS_PER_MINUTE:'20',PUBLIC_CLIENT_REQUESTS_PER_MINUTE:'3',PUBLIC_GLOBAL_MODEL_CALLS_PER_DAY:'11',PUBLIC_CLIENT_MODEL_CALLS_PER_DAY:'2'})).toEqual({globalRequestsPerMinute:20,clientRequestsPerMinute:3,globalModelCallsPerDay:11,clientModelCallsPerDay:2});
+    expect(publicQuotaLimits({PUBLIC_GLOBAL_REQUESTS_PER_MINUTE:'0',PUBLIC_CLIENT_MODEL_CALLS_PER_DAY:'1001'})).toMatchObject({globalRequestsPerMinute:300,clientModelCallsPerDay:5});
+  });
+  it('rejects quota exhaustion across concurrent users without conflating their session counts',()=>{
+    expect(quotaAdmission(2,1,3,2,'limited')).toEqual({allowed:true});
+    expect(quotaAdmission(3,0,3,2,'limited')).toEqual({allowed:false,reason:'limited'});
+    expect(quotaAdmission(2,2,3,2,'limited')).toEqual({allowed:false,reason:'limited'});
   });
 });
 

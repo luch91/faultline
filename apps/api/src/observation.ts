@@ -19,3 +19,16 @@ export function normalizeObservation(name: string, evidence: string, source: str
   if (observed.has('UNKNOWN') || observed.has('POSITIVE') && observed.has('NEGATIVE')) return null;
   return proposed;
 }
+
+export function normalizeFreshness(proposed:number|null,source:string):number|null {
+  if(proposed===null)return null;
+  const match=source.match(/\b(?:within|fresh(?:ness)?\s+(?:of|within)?|no older than)\s+(\d+)\s*(seconds?|minutes?|hours?)\b/i);
+  if(!match)return null;
+  const amount=Number(match[1]);const unit=match[2]?.toLowerCase()??'';const multiplier=unit.startsWith('hour')?3600:unit.startsWith('minute')?60:1;
+  return Number.isSafeInteger(amount)&&amount>0&&amount*multiplier===proposed?proposed:null;
+}
+
+export function normalizeObservedAt(proposed:string|null,source:string):string|null {
+  if(proposed===null)return null;
+  return Number.isFinite(Date.parse(proposed))&&source.includes(proposed)?proposed:null;
+}
