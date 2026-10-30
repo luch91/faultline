@@ -1,0 +1,104 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-01",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-01",
+    "title": "Missing human approval",
+    "sourceDocuments": [
+      {
+        "id": "mfb-01-source",
+        "text": "Policy: production deployment requires human approval. Automation: deployment checks no condition gates. Observation: human approval is recorded.",
+        "contentHash": "4eb9eae3dad23d0550117a0275a2e56adc1784f647303e3331c834e23ef592ab",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "human approval",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-01-source",
+            "startOffset": 105,
+            "endOffset": 145,
+            "excerpt": "Observation: human approval is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires human approval.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-01-source",
+            "startOffset": 0,
+            "endOffset": 54,
+            "excerpt": "Policy: production deployment requires human approval.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-01-source",
+            "startOffset": 55,
+            "endOffset": 104,
+            "excerpt": "Automation: deployment checks no condition gates.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-01-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of human approval",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": {
+    "stepId": "deploy-production",
+    "conditionId": "condition-1"
+  },
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": false,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "UNSAFE_EXECUTION",
+    "afterSafeguard": "SAFE_BLOCK",
+    "trace": [
+      "EXECUTED"
+    ],
+    "justification": "Approval is mandatory, yet the deployment gate does not check it."
+  }
+}

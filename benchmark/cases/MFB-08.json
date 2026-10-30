@@ -1,0 +1,121 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-08",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-08",
+    "title": "Healthy execution",
+    "sourceDocuments": [
+      {
+        "id": "mfb-08-source",
+        "text": "Policy: production deployment requires passing tests. Automation: deployment checks passing tests. Observation: passing tests is recorded. Observation: optional notification is recorded.",
+        "contentHash": "6521c7b264d8ee4c44a174b0c3448ada5905dff0bdcfa6017c9425e77f288743",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "passing tests",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-08-source",
+            "startOffset": 99,
+            "endOffset": 138,
+            "excerpt": "Observation: passing tests is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      },
+      {
+        "id": "condition-2",
+        "name": "optional notification",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-08-source",
+            "startOffset": 139,
+            "endOffset": 186,
+            "excerpt": "Observation: optional notification is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires passing tests.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-08-source",
+            "startOffset": 0,
+            "endOffset": 53,
+            "excerpt": "Policy: production deployment requires passing tests.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-08-source",
+            "startOffset": 54,
+            "endOffset": 98,
+            "excerpt": "Automation: deployment checks passing tests.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-08-change",
+    "targetConditionId": "condition-2",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of optional notification",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": null,
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": true,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "SAFE_EXECUTION",
+    "afterSafeguard": "SAFE_EXECUTION",
+    "trace": [
+      "EXECUTED"
+    ],
+    "justification": "The optional notification is irrelevant to the required test gate and deployment remains safe."
+  }
+}

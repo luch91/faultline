@@ -1,0 +1,104 @@
+{
+  "benchmarkVersion": "1",
+  "id": "MFB-04",
+  "workflow": {
+    "schemaVersion": "1.0.0",
+    "id": "mfb-04",
+    "title": "Canary gate bypass",
+    "sourceDocuments": [
+      {
+        "id": "mfb-04-source",
+        "text": "Policy: production deployment requires canary health. Automation: deployment checks no condition gates. Observation: canary health is recorded.",
+        "contentHash": "1465990e7109e2104bb2c80582be62d7d65613c73b57df9de0b8e5b792bfcacb",
+        "createdAt": "2026-10-26T18:00:00.000Z",
+        "schemaVersion": "1.0.0"
+      }
+    ],
+    "conditions": [
+      {
+        "id": "condition-1",
+        "name": "canary health",
+        "valueType": "BOOLEAN",
+        "expectedValue": true,
+        "observedValue": true,
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-04-source",
+            "startOffset": 104,
+            "endOffset": 143,
+            "excerpt": "Observation: canary health is recorded.",
+            "verified": true
+          }
+        ],
+        "freshnessRequirement": null,
+        "observedAt": null
+      }
+    ],
+    "policyRules": [
+      {
+        "id": "deployment-policy",
+        "description": "Policy: production deployment requires canary health.",
+        "subjectStepId": "deploy-production",
+        "predicate": "ALL",
+        "requiredConditionIds": [
+          "condition-1"
+        ],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-04-source",
+            "startOffset": 0,
+            "endOffset": 53,
+            "excerpt": "Policy: production deployment requires canary health.",
+            "verified": true
+          }
+        ],
+        "origin": "EXPLICIT"
+      }
+    ],
+    "steps": [
+      {
+        "id": "deploy-production",
+        "name": "Deploy production",
+        "actionType": "DEPLOY",
+        "dependsOn": [],
+        "executionGateIds": [],
+        "sourceSpans": [
+          {
+            "sourceId": "mfb-04-source",
+            "startOffset": 54,
+            "endOffset": 103,
+            "excerpt": "Automation: deployment checks no condition gates.",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "id": "mfb-04-change",
+    "targetConditionId": "condition-1",
+    "originalValue": true,
+    "replacementValue": false,
+    "reason": "Test failure of canary health",
+    "proposedBy": "USER",
+    "validated": true
+  },
+  "safeguard": {
+    "stepId": "deploy-production",
+    "conditionId": "condition-1"
+  },
+  "assumptions": [
+    "Boolean observations are declared fixture inputs, not live telemetry.",
+    "Only declared execution gates and step dependencies are evaluated."
+  ],
+  "negativeControl": false,
+  "groundTruth": {
+    "baseline": "SAFE_EXECUTION",
+    "counterfactual": "UNSAFE_EXECUTION",
+    "afterSafeguard": "SAFE_BLOCK",
+    "trace": [
+      "EXECUTED"
+    ],
+    "justification": "The release policy requires healthy canary evidence, while the execution gate omits it."
+  }
+}
