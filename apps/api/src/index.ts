@@ -47,12 +47,12 @@ async function extract(text:string,env:Env,signal:AbortSignal,client:string){
   const graph:Workflow={schemaVersion:'1.0.0',id:'extracted',title:parsed.title,sourceDocuments:[{id:'input',text,contentHash,createdAt:new Date().toISOString(),schemaVersion:'1.0.0'}],conditions:parsed.conditions.map(x=>({id:x.id,name:x.name,valueType:'BOOLEAN',expectedValue:x.expectedValue,observedValue:x.observedValue,sourceSpans:[span(x.evidence)],freshnessRequirement:null,observedAt:null})),policyRules:parsed.policyRules.map(x=>({id:x.id,description:x.description,subjectStepId:x.subjectStepId,predicate:'ALL',requiredConditionIds:x.requiredConditionIds,sourceSpans:[span(x.evidence)],origin:'EXPLICIT'})),steps:parsed.steps.map(x=>({id:x.id,name:x.name,actionType:x.actionType,dependsOn:x.dependsOn,executionGateIds:x.executionGateIds,sourceSpans:[span(x.evidence)]}))};
   return {workflow:validateWorkflow(graph),model:{id:response.id??null,modelId:response.modelId,provider:'Meta Model API',role:'EXTRACTION',usage:response.usage??null,accountingStatus:response.accountingStatus}};
 }
-async function investigate(graph:Workflow,env:Env,signal:AbortSignal,client:string){
+async function investigate(graph:Workflow,env:Env,signal:AbortSignal,client:string,forcedModel?:ModelId){
   validateWorkflow(graph);
   const routing=routeInvestigation(graph,env.WONDER_ENABLED==='true');
-  let selectedModel=routing.modelId;
-  let selectedRole=routing.role;
-  let routingReason=routing.reason;
+  let selectedModel=forcedModel??routing.modelId;
+  let selectedRole=forcedModel?'ADVANCED_INVESTIGATION' as const:routing.role;
+  let routingReason=forcedModel?`Controlled evaluation of ${forcedModel}`:routing.reason;
   const candidates=graph.conditions.filter(x=>typeof x.observedValue==='boolean');
   if(!candidates.length)throw new HttpError(422,'Set observed condition values before running an investigation');
   const tool={type:'function',name:'run_counterfactual',description:'Test a change to one observed boolean condition using the deterministic simulator.',parameters:{type:'object',properties:{conditionId:{type:'string'},replacementValue:{type:'boolean'}},required:['conditionId','replacementValue'],additionalProperties:false}};
@@ -97,7 +97,21 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
     if(url.pathname==='/api/v1/workflows/extract'){const {text}=z.object({text:z.string()}).parse(data);return reply(await extract(text,env,request.signal,client),200,headers);}
     if(url.pathname==='/api/v1/experiments/run'){const {workflow,intervention}=bodySchema.parse(data);return reply({kind:intervention?'COUNTERFACTUAL':'BASELINE',result:await evaluate(workflow,intervention)},200,headers);}
     if(url.pathname==='/api/v1/safeguards/verify'){const x=verifySchema.parse(data);return reply(await verifySafeguard(x.workflow,x.intervention,x.stepId,x.conditionId),200,headers);}
-    if(url.pathname==='/api/v1/investigations'){const {workflow}=z.object({workflow:WorkflowSchema}).parse(data);const ledger=env.BUDGET.getByName('project');if(!await ledger.acquireInvestigation())throw new HttpError(429,'An investigation is already running');try{return reply(await investigate(workflow,env,request.signal,client),200,headers);}finally{await ledger.releaseInvestigation();}}
+    if(url.pathname==='/api/v1/investigations'||url.pathname==='/api/v1/evaluation/investigate'){
+      const controlled=url.pathname==='/api/v1/evaluation/investigate';
+      if(controlled&&client!=='eval:controlled')throw new HttpError(403,'Controlled evaluation access denied');
+      const {workflow,modelId}=z.object({workflow:WorkflowSchema,modelId:z.enum(['muse-spark-1.3','muse-wonder-1.0']).optional()}).parse(data);
+      if(controlled&&!modelId)throw new HttpError(400,'Evaluation model is required');
+      const ledger=env.BUDGET.getByName('project');if(!await ledger.acquireInvestigation())throw new HttpError(429,'An investigation is already running');try{return reply(await investigate(workflow,env,request.signal,client,controlled?modelId:undefined),200,headers);}finally{await ledger.releaseInvestigation();}
+    }
+    if(url.pathname==='/api/v1/evaluation/model-only'){
+      if(client!=='eval:controlled')throw new HttpError(403,'Controlled evaluation access denied');
+      const {workflow,modelId}=z.object({workflow:WorkflowSchema,modelId:z.enum(['muse-spark-1.3','muse-wonder-1.0'])}).parse(data);
+      validateWorkflow(workflow);
+      const response=await meta(env,modelId,{input:[{role:'developer',content:'Without simulator tools, select one adversarial change to a currently observed boolean condition and predict the resulting workflow outcome. Return JSON only with conditionId, replacementValue, predictedOutcome (SAFE_EXECUTION, UNSAFE_EXECUTION, SAFE_BLOCK, or INDETERMINATE), rootCauseConditionId (string or null), and explanation. Do not invent observations or claim to have run a simulator.'},{role:'user',content:JSON.stringify({conditions:workflow.conditions.map(x=>({id:x.id,name:x.name,observedValue:x.observedValue})),policyRules:workflow.policyRules.map(x=>({id:x.id,subjectStepId:x.subjectStepId,requiredConditionIds:x.requiredConditionIds})),steps:workflow.steps.map(x=>({id:x.id,actionType:x.actionType,dependsOn:x.dependsOn,executionGateIds:x.executionGateIds}))})}]},request.signal,client);
+      const output=response.output?.flatMap(x=>x.content??[]).find(x=>x.type==='output_text')?.text??'';
+      return reply({modelId,responseId:response.id??null,usage:response.usage??null,accountingStatus:response.accountingStatus,output},200,headers);
+    }
     if(url.pathname==='/api/v1/challengers/open-weight'){
       if(env.BASETEN_CHALLENGER_ENABLED!=='true'||env.BASETEN_CREDITS_CONFIRMED!=='true'||!env.BASETEN_API_KEY)throw new HttpError(503,'Open-weight challenger is disabled');
       if(!env.BASETEN_TEST_TOKEN||request.headers.get('X-Minsk-Test-Token')!==env.BASETEN_TEST_TOKEN)throw new HttpError(403,'Challenger access denied');
