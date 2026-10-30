@@ -33,6 +33,16 @@ describe('open-weight challenger boundary',()=>{
     expect(provider.validateAvailability()).toBe(false);
     await expect(provider.generateCandidates(missingApproval,{maxCandidates:3},new AbortController().signal)).rejects.toMatchObject({status:503});
   });
+  it('records a bounded transport failure without pretending it succeeded',async()=>{
+    const ledger={reserve:vi.fn(async()=>({allowed:true})),settle:vi.fn(async()=>{}),markUnknown:vi.fn(async()=>{})};
+    const original=globalThis.fetch;
+    globalThis.fetch=vi.fn(async()=>{throw new Error('network unavailable');});
+    try{
+      const provider=new EligibleOpenWeightInvestigator('test-key',true,ledger as unknown as DurableObjectStub<BudgetLedger>,'client');
+      await expect(provider.generateCandidates(missingApproval,{maxCandidates:3},new AbortController().signal)).rejects.toThrow('network unavailable');
+      expect(ledger.markUnknown).toHaveBeenCalledWith(expect.any(String),expect.any(Number),'TRANSPORT');
+    }finally{globalThis.fetch=original;}
+  });
   it('validates and deduplicates candidates before simulator use',async()=>{
     const ledger={reserve:vi.fn(async()=>({allowed:true})),settle:vi.fn(async()=>{}),markUnknown:vi.fn(async()=>{})};
     const original=globalThis.fetch;
