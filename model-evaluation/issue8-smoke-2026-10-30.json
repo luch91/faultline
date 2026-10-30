@@ -1,0 +1,384 @@
+{
+  "timestamp": "2026-10-30T07:50:40.755Z",
+  "mode": "live local protected Worker",
+  "before": {
+    "liveModelEnabled": true,
+    "openWeightEnabled": true,
+    "mode": "Standard",
+    "configuration": {
+      "switchEnabled": true,
+      "creditsConfirmed": true,
+      "standardMode": true,
+      "keyPresent": true
+    },
+    "internalCeilingUsd": 0.25,
+    "conservativeAccountedUsd": 0,
+    "basetenCeilingUsd": 0.25,
+    "basetenAccountedUsd": 0,
+    "evaluation": {
+      "calls": 0,
+      "conservativeUsd": 0,
+      "usagePricedUsd": 0,
+      "reservedUsd": 0
+    },
+    "states": {},
+    "models": {},
+    "providers": {},
+    "providerBillingReconciled": false
+  },
+  "after": {
+    "liveModelEnabled": true,
+    "openWeightEnabled": true,
+    "mode": "Standard",
+    "configuration": {
+      "switchEnabled": true,
+      "creditsConfirmed": true,
+      "standardMode": true,
+      "keyPresent": true
+    },
+    "internalCeilingUsd": 0.25,
+    "conservativeAccountedUsd": 0.028846,
+    "basetenCeilingUsd": 0.25,
+    "basetenAccountedUsd": 0.005417,
+    "evaluation": {
+      "calls": 6,
+      "conservativeUsd": 0.159902,
+      "usagePricedUsd": 0.034263,
+      "reservedUsd": 0.159902
+    },
+    "states": {
+      "PROVIDER_USAGE": {
+        "calls": 5,
+        "usd": 0.028846
+      }
+    },
+    "models": {
+      "meta-models/muse-spark-open-1026": {
+        "calls": 1,
+        "usd": 0.005417,
+        "inputTokens": 328,
+        "outputTokens": 1178
+      },
+      "muse-spark-1.3": {
+        "calls": 3,
+        "usd": 0.007786,
+        "inputTokens": 2152,
+        "outputTokens": 1199
+      },
+      "muse-wonder-1.0": {
+        "calls": 2,
+        "usd": 0.02106,
+        "inputTokens": 1805,
+        "outputTokens": 692
+      }
+    },
+    "providers": {
+      "Baseten": {
+        "calls": 1,
+        "usd": 0.005417
+      },
+      "Meta": {
+        "calls": 5,
+        "usd": 0.028846
+      }
+    },
+    "providerBillingReconciled": false
+  },
+  "events": [
+    {
+      "task": "Spark extraction",
+      "latencyMs": 7011,
+      "model": {
+        "id": "resp_6ae44c422d68a3e667864a90",
+        "modelId": "muse-spark-1.3",
+        "provider": "Meta Model API",
+        "role": "EXTRACTION",
+        "usage": {
+          "input_tokens": 485,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens": 830,
+          "output_tokens_details": {
+            "reasoning_tokens": 644
+          },
+          "total_tokens": 1315
+        },
+        "accountingStatus": "PROVIDER_USAGE",
+        "telemetry": {
+          "latencyMs": 6980,
+          "reservedMicroUsd": 13802,
+          "estimatedActualMicroUsd": 4134,
+          "providerChargeUsd": null
+        }
+      },
+      "conditions": 2
+    },
+    {
+      "task": "investigation",
+      "requestedModel": "muse-spark-1.3",
+      "latencyMs": 3950,
+      "model": {
+        "id": "resp_6ae44c444a29c29a41a84c73",
+        "modelId": "muse-spark-1.3",
+        "provider": "Meta Model API",
+        "role": "ROUTINE_INVESTIGATION",
+        "followupId": "resp_6ae44c46cf4f606cd0574acd",
+        "usage": {
+          "first": {
+            "input_tokens": 716,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 128,
+            "output_tokens_details": {
+              "reasoning_tokens": 38
+            },
+            "total_tokens": 844
+          },
+          "second": {
+            "input_tokens": 951,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 241,
+            "output_tokens_details": {
+              "reasoning_tokens": 143
+            },
+            "total_tokens": 1192
+          }
+        },
+        "accountingStatus": "PROVIDER_USAGE",
+        "telemetry": [
+          {
+            "latencyMs": 1869,
+            "reservedMicroUsd": 13363,
+            "estimatedActualMicroUsd": 1439,
+            "providerChargeUsd": null
+          },
+          {
+            "latencyMs": 1995,
+            "reservedMicroUsd": 14424,
+            "estimatedActualMicroUsd": 2213,
+            "providerChargeUsd": null
+          }
+        ]
+      },
+      "routing": {
+        "modelId": "muse-spark-1.3",
+        "reason": "Controlled evaluation of muse-spark-1.3",
+        "escalated": false
+      },
+      "trace": [
+        {
+          "id": "call_6631206a-44be-4921-8f80-89d86db29be9",
+          "tool": "run_counterfactual",
+          "status": "COMPLETED",
+          "arguments": {
+            "conditionId": "human-approval",
+            "replacementValue": false
+          },
+          "result": {
+            "outcome": "UNSAFE_EXECUTION",
+            "firstViolation": "approval-required",
+            "policyResults": [
+              {
+                "ruleId": "approval-required",
+                "state": "VIOLATED"
+              }
+            ],
+            "stepResults": [
+              {
+                "stepId": "deploy-production",
+                "eligibility": "SATISFIED",
+                "executes": true
+              }
+            ]
+          },
+          "modelId": "muse-spark-1.3",
+          "responseId": "resp_6ae44c444a29c29a41a84c73",
+          "accountingStatus": "PROVIDER_USAGE"
+        },
+        {
+          "id": "call_0562ccaa-6bfb-4e92-a606-427d463ef758",
+          "tool": "propose_safeguard",
+          "status": "COMPLETED",
+          "arguments": {
+            "stepId": "deploy-production",
+            "conditionId": "human-approval"
+          },
+          "result": {
+            "repairedOutcome": "SAFE_BLOCK",
+            "resolved": true
+          },
+          "modelId": "muse-spark-1.3",
+          "responseId": "resp_6ae44c46cf4f606cd0574acd",
+          "accountingStatus": "PROVIDER_USAGE"
+        }
+      ],
+      "baseline": "SAFE_EXECUTION",
+      "counterfactual": "UNSAFE_EXECUTION",
+      "safeguard": "SAFE_BLOCK",
+      "certificate": {
+        "valid": true,
+        "errors": [],
+        "inputVerified": true,
+        "provenanceAuthenticity": "NOT_VERIFIED"
+      }
+    },
+    {
+      "task": "investigation",
+      "requestedModel": "muse-wonder-1.0",
+      "latencyMs": 6029,
+      "model": {
+        "id": "resp_6ae44c483b98b94127e5420f",
+        "modelId": "muse-wonder-1.0",
+        "provider": "Meta Model API",
+        "role": "ADVANCED_INVESTIGATION",
+        "followupId": "resp_6ae44c4cebd80601305e42a2",
+        "usage": {
+          "first": {
+            "input_tokens": 662,
+            "input_tokens_details": {
+              "cached_tokens": 116
+            },
+            "output_tokens": 371,
+            "output_tokens_details": {
+              "reasoning_tokens": 274
+            },
+            "total_tokens": 1033
+          },
+          "second": {
+            "input_tokens": 1143,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 321,
+            "output_tokens_details": {
+              "reasoning_tokens": 205
+            },
+            "total_tokens": 1464
+          }
+        },
+        "accountingStatus": "PROVIDER_USAGE",
+        "telemetry": [
+          {
+            "latencyMs": 2514,
+            "reservedMicroUsd": 51916,
+            "estimatedActualMicroUsd": 10068,
+            "providerChargeUsd": null
+          },
+          {
+            "latencyMs": 3476,
+            "reservedMicroUsd": 57188,
+            "estimatedActualMicroUsd": 10992,
+            "providerChargeUsd": null
+          }
+        ]
+      },
+      "routing": {
+        "modelId": "muse-wonder-1.0",
+        "reason": "Controlled evaluation of muse-wonder-1.0",
+        "escalated": true
+      },
+      "trace": [
+        {
+          "id": "call_f580f3e4-c1bf-48c2-b7a1-f1b4119d0ea4",
+          "tool": "run_counterfactual",
+          "status": "COMPLETED",
+          "arguments": {
+            "conditionId": "human-approval",
+            "replacementValue": false
+          },
+          "result": {
+            "outcome": "UNSAFE_EXECUTION",
+            "firstViolation": "approval-required",
+            "policyResults": [
+              {
+                "ruleId": "approval-required",
+                "state": "VIOLATED"
+              }
+            ],
+            "stepResults": [
+              {
+                "stepId": "deploy-production",
+                "eligibility": "SATISFIED",
+                "executes": true
+              }
+            ]
+          },
+          "modelId": "muse-wonder-1.0",
+          "responseId": "resp_6ae44c483b98b94127e5420f",
+          "accountingStatus": "PROVIDER_USAGE"
+        },
+        {
+          "id": "call_6ae0f921-c7c2-4908-a192-39914975f5d8",
+          "tool": "propose_safeguard",
+          "status": "COMPLETED",
+          "arguments": {
+            "stepId": "deploy-production",
+            "conditionId": "human-approval"
+          },
+          "result": {
+            "repairedOutcome": "SAFE_BLOCK",
+            "resolved": true
+          },
+          "modelId": "muse-wonder-1.0",
+          "responseId": "resp_6ae44c4cebd80601305e42a2",
+          "accountingStatus": "PROVIDER_USAGE"
+        }
+      ],
+      "baseline": "SAFE_EXECUTION",
+      "counterfactual": "UNSAFE_EXECUTION",
+      "safeguard": "SAFE_BLOCK",
+      "certificate": {
+        "valid": true,
+        "errors": [],
+        "inputVerified": true,
+        "provenanceAuthenticity": "NOT_VERIFIED"
+      }
+    },
+    {
+      "task": "Baseten challenger",
+      "latencyMs": 5158,
+      "challenger": {
+        "candidates": [
+          {
+            "conditionId": "tests-pass",
+            "replacementValue": false,
+            "reason": "Adversarial test for negated automated tests condition"
+          },
+          {
+            "conditionId": "human-approval",
+            "replacementValue": false,
+            "reason": "Adversarial test for negated human approval condition"
+          },
+          {
+            "conditionId": "migration-compatible",
+            "replacementValue": false,
+            "reason": "Adversarial test for negated migration compatibility condition"
+          }
+        ],
+        "provider": "Baseten",
+        "modelId": "meta-models/muse-spark-open-1026",
+        "responseId": "chatcmpl-4c43be86bb374c74b966941f23ce8860",
+        "usage": {
+          "inputTokens": 328,
+          "outputTokens": 1178
+        },
+        "accountingStatus": "PROVIDER_USAGE",
+        "telemetry": {
+          "latencyMs": 5123,
+          "reservedMicroUsd": 9209,
+          "estimatedActualMicroUsd": 5417,
+          "providerChargeUsd": null
+        }
+      },
+      "outcomes": [
+        "SAFE_BLOCK",
+        "UNSAFE_EXECUTION",
+        "SAFE_BLOCK"
+      ]
+    }
+  ]
+}

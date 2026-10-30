@@ -10,7 +10,7 @@ const candidateSchema=z.object({conditionId:z.string(),replacementValue:z.boolea
 const responseSchema=z.object({candidates:z.array(candidateSchema).max(3)});
 export type Candidate=z.infer<typeof candidateSchema>;
 export type CandidateConstraints={maxCandidates:number};
-export type ChallengerResult={candidates:Candidate[];provider:'Baseten';modelId:typeof BASETEN_MODEL;responseId:string|null;usage:{inputTokens:number;outputTokens:number}|null;accountingStatus:'PROVIDER_USAGE'|'UNKNOWN_USAGE'};
+export type ChallengerResult={candidates:Candidate[];provider:'Baseten';modelId:typeof BASETEN_MODEL;responseId:string|null;usage:{inputTokens:number;outputTokens:number}|null;accountingStatus:'PROVIDER_USAGE'|'UNKNOWN_USAGE';telemetry:{latencyMs:number;reservedMicroUsd:number;estimatedActualMicroUsd:number|null;providerChargeUsd:null}};
 export interface AdversarialModelProvider {
   generateCandidates(workflow:Workflow,constraints:CandidateConstraints,signal:AbortSignal):Promise<ChallengerResult>;
   validateAvailability():boolean;
@@ -33,7 +33,7 @@ export function validatedCandidates(content:string|undefined,eligible:Map<string
   if(!valid.length)throw new ChallengerError(502,`Baseten proposed no valid intervention: ${unknown} unknown IDs, ${unchanged} unchanged values, ${duplicate} duplicates`);
   return valid;
 }
-export function basetenEstimateMicroUsd(inputChars:number,outputTokens=MAX_OUTPUT_TOKENS){return Math.ceil(Math.ceil(inputChars/3)*INPUT_RATE+outputTokens*OUTPUT_RATE);}
+export function basetenEstimateMicroUsd(inputBytes:number,outputTokens=MAX_OUTPUT_TOKENS){return Math.ceil(inputBytes*INPUT_RATE+outputTokens*OUTPUT_RATE);}
 export function basetenActualMicroUsd(inputTokens:number,outputTokens:number){return Math.ceil(inputTokens*INPUT_RATE+outputTokens*OUTPUT_RATE);}
 
 export class EligibleOpenWeightInvestigator implements AdversarialModelProvider {
@@ -47,9 +47,11 @@ export class EligibleOpenWeightInvestigator implements AdversarialModelProvider 
     const prompt=JSON.stringify({conditions:candidates.map(condition=>({id:condition.id,name:condition.name,observedValue:condition.observedValue})),rules:workflow.policyRules.map(rule=>({id:rule.id,subjectStepId:rule.subjectStepId,requiredConditionIds:rule.requiredConditionIds})),steps:workflow.steps.map(step=>({id:step.id,executionGateIds:step.executionGateIds})),maxCandidates:Math.min(3,constraints.maxCandidates)});
     const payload=JSON.stringify({model:BASETEN_MODEL,messages:[{role:'system',content:'Propose up to three adversarial changes to observed boolean conditions in the validated workflow. Return only a JSON object with a nonempty candidates array. Each candidate has conditionId, replacementValue, and reason. Use only listed IDs and choose a value different from the observation. Return a candidate even if a gate should safely block it or another condition remains unknown. Do not claim any simulator outcome.'},{role:'user',content:prompt}],max_tokens:MAX_OUTPUT_TOKENS,reasoning_effort:'low',response_format:{type:'json_object'},temperature:0});
     const id=crypto.randomUUID();
-    const reservation=await this.ledger.reserve(id,this.client,basetenEstimateMicroUsd(payload.length),'text',BASETEN_MODEL,'Baseten');
+    const reservedMicroUsd=basetenEstimateMicroUsd(new TextEncoder().encode(payload).length);
+    const reservation=await this.ledger.reserve(id,this.client,reservedMicroUsd,'text',BASETEN_MODEL,'Baseten');
     if(!reservation.allowed)throw new ChallengerError(reservation.reason?.includes('ceiling')?402:429,reservation.reason??'Baseten request denied');
     const timeout=AbortSignal.timeout(30_000);
+    const start=performance.now();
     try{
       const response=await fetch('https://inference.baseten.co/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${this.key}`,'Content-Type':'application/json'},body:payload,signal:AbortSignal.any([signal,timeout])});
       if(!response.ok)throw new ChallengerError(response.status===429?429:response.status>=500?502:502,`Baseten provider returned ${response.status}`);
@@ -57,7 +59,7 @@ export class EligibleOpenWeightInvestigator implements AdversarialModelProvider 
       const reported=result.usage?.prompt_tokens!==undefined&&result.usage.completion_tokens!==undefined;
       if(reported)await this.ledger.settle(id,basetenActualMicroUsd(result.usage!.prompt_tokens!,result.usage!.completion_tokens!),result.usage!.prompt_tokens,result.usage!.completion_tokens);else await this.ledger.markUnknown(id);
       const valid=validatedCandidates(result.choices?.[0]?.message?.content,new Map(candidates.map(candidate=>[candidate.id,candidate.observedValue as boolean])),Math.min(3,constraints.maxCandidates));
-      return {candidates:valid,provider:'Baseten',modelId:BASETEN_MODEL,responseId:result.id??null,usage:reported?{inputTokens:result.usage!.prompt_tokens!,outputTokens:result.usage!.completion_tokens!}:null,accountingStatus:reported?'PROVIDER_USAGE':'UNKNOWN_USAGE'};
+      return {candidates:valid,provider:'Baseten',modelId:BASETEN_MODEL,responseId:result.id??null,usage:reported?{inputTokens:result.usage!.prompt_tokens!,outputTokens:result.usage!.completion_tokens!}:null,accountingStatus:reported?'PROVIDER_USAGE':'UNKNOWN_USAGE',telemetry:{latencyMs:Math.round(performance.now()-start),reservedMicroUsd,estimatedActualMicroUsd:reported?basetenActualMicroUsd(result.usage!.prompt_tokens!,result.usage!.completion_tokens!):null,providerChargeUsd:null}};
     }catch(error){await this.ledger.markUnknown(id);if(signal.aborted)throw new ChallengerError(499,'Request cancelled');if(timeout.aborted)throw new ChallengerError(504,'Baseten provider timed out');throw error;}
   }
 }

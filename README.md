@@ -48,6 +48,14 @@ Use Node 22 and pnpm 10. Run `pnpm install --frozen-lockfile` in the repository 
 
 Set `MINSK_STAGING_URL` to a verified preview URL to run the browser journey against staging without starting local servers.
 
+### Fresh model benchmark
+
+`pnpm benchmark` is offline and makes no model calls. `pnpm benchmark:models -- --provider all` runs new inference on the eight locked synthetic held-out cases. Choose `meta` or `baseten` to test one provider. It writes per-case responses and locked reference labels to ignored `model-evaluation/results/`. Provider failures are recorded, not scored as successful calls. The results do not establish real-world accuracy.
+
+The model benchmark uses the existing protected Worker and its persistent ledger. For local BYOK, place your own provider credentials and the protected evaluation tokens in the ignored `apps/api/.dev.vars`, enable the desired provider switches, configure `BASETEN_CEILING_MICRO_USD`, and start the local Worker. Set `MINSK_EVAL_API_URL` to its localhost URL, `MINSK_EVAL_TOKEN` to the Worker evaluation token, and, for Baseten, `MINSK_EVAL_TEST_TOKEN` to the challenger token. For hosted access, set the URL to the authorized HTTPS Worker and obtain the protected tokens from its operator. Provider keys remain server-side in both modes. The CLI makes no silent fallback to archived responses.
+
+The Meta ledger defaults to $50 across Spark and Wonder, configurable downward with `META_CEILING_MICRO_USD`. Baseten requires an explicit positive `BASETEN_CEILING_MICRO_USD`; no fixed $10 provider ceiling applies. Evaluation calls also require configured dispatch and estimated-cost limits. Estimates and reservations are application controls, not a provider-side billing guarantee. Unknown usage retains the reservation.
+
 ## Security and limitations
 
 Minsk never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Request and model-call limits are in place; live inference can be disabled through the Worker switch. Promotional-credit expiry is not detected automatically. The complete multi-tool catalogue remains outside this milestone.

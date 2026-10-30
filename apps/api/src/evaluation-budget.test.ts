@@ -11,6 +11,7 @@ describe('provider spending configuration',()=>{
     expect(providerCeiling('Baseten',{BASETEN_CEILING_MICRO_USD:'25000000'})).toBe(25_000_000);
     expect(providerCeiling('Baseten',{BASETEN_CEILING_MICRO_USD:'0'})).toBeNull();
     expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'Infinity'})).toBeNull();
+    expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'50000001'})).toBeNull();
   });
 });
 

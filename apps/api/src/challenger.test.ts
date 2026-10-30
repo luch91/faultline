@@ -25,7 +25,7 @@ describe('open-weight challenger boundary',()=>{
   });
   it('uses an explicit provider model and a separate conservative estimate',()=>{
     expect(BASETEN_MODEL).toBe('meta-models/muse-spark-open-1026');
-    expect(basetenEstimateMicroUsd(3000,1000)).toBe(5500);
+    expect(basetenEstimateMicroUsd(3000,1000)).toBe(8000);
     expect(basetenActualMicroUsd(1000,1000)).toBe(5500);
   });
   it('refuses a disabled provider before transport',async()=>{

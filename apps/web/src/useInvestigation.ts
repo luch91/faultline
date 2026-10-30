@@ -35,6 +35,8 @@ export function useInvestigation() {
   const [loading, setLoading] = useState(true);
   const [certificate, setCertificate] = useState<unknown>(null);
   const [benchmark, setBenchmark] = useState<unknown>(null);
+  const [challenger,setChallenger]=useState<unknown>(null);
+  const [challengerEnabled,setChallengerEnabled]=useState(false);
   const controller = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export function useInvestigation() {
       if (!ac.signal.aborted) setBaseline(evaluated.result);
     }).catch(e => { if (!ac.signal.aborted) setError(e.message); }).finally(() => { if (!ac.signal.aborted) setLoading(false); });
     call<{ liveModelEnabled: boolean }>('/api/v1/budget', undefined, ac.signal).then(x => setLiveEnabled(x.liveModelEnabled)).catch(() => {});
+    call<{publicChallengerEnabled:boolean}>('/api/v1/budget', undefined, ac.signal).then(x=>setChallengerEnabled(x.publicChallengerEnabled)).catch(()=>{});
     return () => { ac.abort(); controller.current?.abort(); };
   }, []);
 
@@ -59,7 +62,7 @@ export function useInvestigation() {
     finally { if (controller.current === ac) { setBusy(''); controller.current = null; } }
   }
   function reset(next: Workflow) {
-    setWorkflow(next); setSource(next.sourceDocuments[0]?.text ?? ''); setSelected(next.steps[0]?.id ?? null); setBaseline(null); setFailure(null); setVerification(null); setIntervention(null); setApplied(null); setTrace([]); setModel(null); setExtractionModel(null); setCertificate(null); setRouting(undefined); setInvestigationId(null); setScenario('BASELINE');
+    setWorkflow(next); setSource(next.sourceDocuments[0]?.text ?? ''); setSelected(next.steps[0]?.id ?? null); setBaseline(null); setFailure(null); setVerification(null); setIntervention(null); setApplied(null); setTrace([]); setModel(null); setExtractionModel(null); setCertificate(null);setChallenger(null); setRouting(undefined); setInvestigationId(null); setScenario('BASELINE');
   }
   function selectWorkflow(next: Workflow) {
     if (workflow === next) return;
@@ -95,8 +98,9 @@ export function useInvestigation() {
     });
   }
   function loadBenchmark(){return run('Running benchmark',s=>call<unknown>('/api/v1/benchmark',undefined,s),setBenchmark);}
+  function runChallenger(){if(!workflow)return;return run('Running Baseten challenger',s=>call<unknown>('/api/v1/challengers/open-weight',{workflow,...(investigationId&&applied?{hosted:{investigationId,intervention:applied}}:{})},s),setChallenger);}
   const result = scenario === 'SAFEGUARD' ? verification?.repaired ?? baseline : scenario === 'COUNTERFACTUAL' ? failure ?? baseline : baseline;
   const sceneWorkflow = workflow && scenario === 'SAFEGUARD' && verification ? { ...workflow, steps: workflow.steps.map(step => step.id === verification.safeguard.stepId && !step.executionGateIds.includes(verification.safeguard.conditionId) ? { ...step, executionGateIds: [...step.executionGateIds, verification.safeguard.conditionId] } : step) } : workflow;
-  return { samples, workflow, sceneWorkflow, selected, setSelected, source, setSource, baseline, failure, verification, intervention, applied, trace, model, extractionModel, routing, scenario, setScenario, result, busy, error, liveEnabled, loading, certificate, benchmark, loadBenchmark,loadWorkflowJson, selectWorkflow, selectCondition, editCondition, toggleGate, analyze, applyIntervention, investigate, verify, exportCertificate, cancel: () => controller.current?.abort() };
+  return { samples, workflow, sceneWorkflow, selected, setSelected, source, setSource, baseline, failure, verification, intervention, applied, trace, model, extractionModel, routing, scenario, setScenario, result, busy, error, liveEnabled, challengerEnabled,challenger,runChallenger,loading, certificate, benchmark, loadBenchmark,loadWorkflowJson, selectWorkflow, selectCondition, editCondition, toggleGate, analyze, applyIntervention, investigate, verify, exportCertificate, cancel: () => controller.current?.abort() };
 }
 export type InvestigationState = ReturnType<typeof useInvestigation>;

@@ -9,6 +9,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "benchmark": "pnpm --filter @minsk/simulator benchmark",
+    "benchmark:models": "tsx scripts/benchmark-models.ts",
     "verify:certificate": "tsx scripts/verify-certificate.ts",
     "demo:journey": "tsx scripts/demo-journey.ts",
     "model:evaluate": "tsx scripts/model-evaluation.ts",
