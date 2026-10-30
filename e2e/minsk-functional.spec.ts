@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 test('sample, counterfactual, safeguard, replay, certificate, and benchmark', async ({ page }) => {
   await page.goto('/');
@@ -22,7 +23,15 @@ test('sample, counterfactual, safeguard, replay, certificate, and benchmark', as
 
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export certificate' }).click();
-  expect((await download).suggestedFilename()).toBe('minsk-certificate.json');
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('minsk-certificate.json');
+  const certificate = JSON.parse(await readFile(await file.path(), 'utf8'));
+  expect(certificate.certificateVersion).toBe('1');
+  expect(certificate.baseline.outcome).toBe('SAFE_EXECUTION');
+  expect(certificate.evaluationResult.outcome).toBe('UNSAFE_EXECUTION');
+  expect(certificate.verificationResult.outcome).toBe('SAFE_BLOCK');
+  expect(certificate.modelMetadata).toBeNull();
+  expect(certificate.integrityHash).toMatch(/^[a-f0-9]{64}$/);
   await expect(page.getByText('Exported certificate')).toBeVisible();
 
   await page.getByRole('button', { name: 'Run 12 deterministic cases' }).click();
