@@ -44,6 +44,7 @@ for(const spec of heldoutSpecs){
   if(provider!=='meta')tasks.push({name:'baseten',path:'/api/v1/challengers/open-weight',body:{workflow}});
   for(const task of tasks){
     if(rows.some(row=>row.caseId===spec.id&&row.task===task.name))continue;
+    const taskStarted=performance.now();
     try{
       const {data,latencyMs}=await call(task.path,task.body);
       let outcome:string|null=null;let targetMatched:boolean|null=null;let repairVerified:boolean|null=null;let extractionCorrect:boolean|null=null;let providerTelemetry:unknown=null;let inputTokens:number|null=null;let outputTokens:number|null=null;
@@ -67,7 +68,7 @@ for(const spec of heldoutSpecs){
       }
       rows.push({caseId:spec.id,task:task.name,reference,latencyMs,providerTelemetry,inputTokens,outputTokens,retries:0,fallbacks:data.routing?.modelId==='muse-spark-1.3'&&String(data.routing?.reason??'').includes('fallback')?1:0,outcome,targetMatched,outcomeCorrect:outcome===null?null:outcome===reference.outcome,repairVerified,extractionCorrect,response:data});
       process.stdout.write(`${spec.id} ${task.name}: ${outcome??String(extractionCorrect)}\n`);
-    }catch(error){const message=error instanceof Error?error.message:String(error);rows.push({caseId:spec.id,task:task.name,reference,error:message});process.stderr.write(`${spec.id} ${task.name}: ${message}\n`);if(/HTTP (402|429)/.test(message))stopped=true;}
+    }catch(error){const message=error instanceof Error?error.message:String(error);rows.push({caseId:spec.id,task:task.name,reference,latencyMs:Math.round(performance.now()-taskStarted),retries:0,fallbacks:0,error:message});process.stderr.write(`${spec.id} ${task.name}: ${message}\n`);if(/HTTP (402|429)/.test(message))stopped=true;}
     await persist({before,status:stopped?'STOPPED':'RUNNING'});
     if(stopped)break;
   }
@@ -80,7 +81,8 @@ const groups=Object.fromEntries([...new Set(rows.map(row=>String(row.task)))].ma
   const classified=group.filter(row=>typeof row.outcome==='string');
   const positive=classified.filter(row=>(row.reference as {outcome:string}).outcome==='UNSAFE_EXECUTION');
   const negative=classified.filter(row=>(row.reference as {outcome:string}).outcome!=='UNSAFE_EXECUTION');
-  return [task,{tasks:group.length,errors:group.filter(row=>!!row.error).length,providerDispatches:group.reduce((sum,row)=>sum+(Array.isArray(row.providerTelemetry)?row.providerTelemetry.length:row.providerTelemetry?1:0),0),endToEndLatencyMs:group.reduce((sum,row)=>sum+Number(row.latencyMs??0),0),inputTokens:group.reduce((sum,row)=>sum+Number(row.inputTokens??0),0),outputTokens:group.reduce((sum,row)=>sum+Number(row.outputTokens??0),0),retries:group.reduce((sum,row)=>sum+Number(row.retries??0),0),fallbacks:group.reduce((sum,row)=>sum+Number(row.fallbacks??0),0),extractionCorrect:group.filter(row=>row.extractionCorrect===true).length,outcomeCorrect:group.filter(row=>row.outcomeCorrect===true).length,truePositive:positive.filter(row=>row.outcome==='UNSAFE_EXECUTION').length,falseNegative:positive.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,falsePositive:negative.filter(row=>row.outcome==='UNSAFE_EXECUTION').length,trueNegative:negative.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,unknownCorrect:group.filter(row=>(row.reference as {outcome:string}).outcome==='INDETERMINATE'&&row.outcome==='INDETERMINATE').length,verifiedRepairs:group.filter(row=>row.repairVerified===true).length}];
+  const telemetry=group.flatMap(row=>Array.isArray(row.providerTelemetry)?row.providerTelemetry:row.providerTelemetry?[row.providerTelemetry]:[]) as Array<{estimatedActualMicroUsd?:number|null}>;
+  return [task,{tasks:group.length,errors:group.filter(row=>!!row.error).length,providerDispatches:telemetry.length,endToEndLatencyMs:group.reduce((sum,row)=>sum+Number(row.latencyMs??0),0),inputTokens:group.reduce((sum,row)=>sum+Number(row.inputTokens??0),0),outputTokens:group.reduce((sum,row)=>sum+Number(row.outputTokens??0),0),usageEstimatedUsd:telemetry.reduce((sum,item)=>sum+Number(item.estimatedActualMicroUsd??0),0)/1_000_000,retries:group.reduce((sum,row)=>sum+Number(row.retries??0),0),fallbacks:group.reduce((sum,row)=>sum+Number(row.fallbacks??0),0),extractionCorrect:group.filter(row=>row.extractionCorrect===true).length,outcomeCorrect:group.filter(row=>row.outcomeCorrect===true).length,truePositive:positive.filter(row=>(row.reference as {outcome:string}).outcome==='UNSAFE_EXECUTION'&&row.outcome==='UNSAFE_EXECUTION').length,falseNegative:positive.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,falsePositive:negative.filter(row=>row.outcome==='UNSAFE_EXECUTION').length,trueNegative:negative.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,unknownCorrect:group.filter(row=>(row.reference as {outcome:string}).outcome==='INDETERMINATE'&&row.outcome==='INDETERMINATE').length,verifiedRepairs:group.filter(row=>row.repairVerified===true).length}];
 }));
 await persist({before,after,groups,status:stopped?'STOPPED':'COMPLETED'});
 process.stdout.write(JSON.stringify(groups,null,2)+'\n');
