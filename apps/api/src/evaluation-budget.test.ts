@@ -1,5 +1,18 @@
 import {describe,expect,it} from 'vitest';
-import {evaluationAdmission} from './budget';
+import {evaluationAdmission,providerCeiling} from './budget';
+
+describe('provider spending configuration',()=>{
+  it('defaults Meta to fifty dollars and fails closed for unconfigured Baseten',()=>{
+    expect(providerCeiling('Meta',{})).toBe(50_000_000);
+    expect(providerCeiling('Baseten',{})).toBeNull();
+  });
+  it('accepts explicit limits and rejects malformed values',()=>{
+    expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'7500000'})).toBe(7_500_000);
+    expect(providerCeiling('Baseten',{BASETEN_CEILING_MICRO_USD:'25000000'})).toBe(25_000_000);
+    expect(providerCeiling('Baseten',{BASETEN_CEILING_MICRO_USD:'0'})).toBeNull();
+    expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'Infinity'})).toBeNull();
+  });
+});
 
 describe('controlled evaluation dispatch limit',()=>{
   it('allows call six and blocks call seven across providers',()=>{
