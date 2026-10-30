@@ -9,7 +9,7 @@ async function post(path:string,body:unknown){return api.fetch(new Request(`http
 describe('deterministic HTTP flow',()=>{
   it('downgrades a cited but unavailable observation to unknown before evaluation',async()=>{
     const text='Release requires approval. The recorded approval evidence is not available. Agent checks no condition before release.';
-    const extracted={title:'Approval evidence unavailable',conditions:[{id:'approval',name:'Approval',expectedValue:true,observedValue:false,evidence:'recorded approval evidence is not available'}],policyRules:[{id:'policy',description:'Release requires approval',subjectStepId:'release',requiredConditionIds:['approval'],evidence:'Release requires approval.'}],steps:[{id:'release',name:'Release',actionType:'DEPLOY',dependsOn:[],executionGateIds:[],evidence:'Agent checks no condition before release.'}]};
+    const extracted={title:'Approval evidence unavailable',conditions:[{id:'approval',name:'Approval',expectedValue:true,observedValue:false,evidence:'recorded approval evidence is not available',freshnessRequirement:null,observedAt:null}],policyRules:[{id:'policy',description:'Release requires approval',subjectStepId:'release',predicate:'ALL',requiredConditionIds:['approval'],evidence:'Release requires approval.'}],steps:[{id:'release',name:'Release',actionType:'DEPLOY',dependsOn:[],executionGateIds:[],evidence:'Agent checks no condition before release.'}]};
     const originalFetch=globalThis.fetch;
     globalThis.fetch=vi.fn(async()=>Response.json({id:'resp-test',output:[{content:[{type:'output_text',text:JSON.stringify(extracted)}]}],usage:{input_tokens:100,output_tokens:100}}));
     const modelLedger={...ledger,reserve:async()=>({allowed:true}),settle:async()=>{},markUnknown:async()=>{}};
@@ -22,6 +22,31 @@ describe('deterministic HTTP flow',()=>{
       expect((await api.fetch(new Request('http://localhost/api/v1/experiments/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workflow:body.workflow})}),modelEnv)).status).toBe(200);
       await expect((await import('@minsk/simulator')).evaluate(body.workflow).then(result=>result.outcome)).resolves.toBe('INDETERMINATE');
     }finally{globalThis.fetch=originalFetch;}
+  });
+  it('preserves extracted ANY logic and explicit observation freshness metadata',async()=>{
+    const text='Release may proceed when either approval or a signed exception is present. Approval was recorded at 2026-10-30T00:00:00.000Z and must be fresh within 60 seconds. A signed exception is absent. Agent checks no condition before release.';
+    const extracted={title:'Any evidence release',conditions:[{id:'approval',name:'Approval',expectedValue:true,observedValue:true,evidence:'Approval was recorded at 2026-10-30T00:00:00.000Z',freshnessRequirement:60,observedAt:'2026-10-30T00:00:00.000Z'},{id:'exception',name:'Signed exception',expectedValue:true,observedValue:false,evidence:'signed exception is absent',freshnessRequirement:null,observedAt:null}],policyRules:[{id:'policy',description:'Release may proceed when either approval or a signed exception is present',subjectStepId:'release',predicate:'ANY',requiredConditionIds:['approval','exception'],evidence:'Release may proceed when either approval or a signed exception is present.'}],steps:[{id:'release',name:'Release',actionType:'DEPLOY',dependsOn:[],executionGateIds:[],evidence:'Agent checks no condition before release.'}]};
+    const originalFetch=globalThis.fetch;
+    globalThis.fetch=vi.fn(async()=>Response.json({id:'resp-any',output:[{content:[{type:'output_text',text:JSON.stringify(extracted)}]}],usage:{input_tokens:100,output_tokens:100}}));
+    const modelLedger={...ledger,reserve:async()=>({allowed:true}),settle:async()=>{},markUnknown:async()=>{}};
+    const modelEnv={BUDGET:{getByName:()=>modelLedger},MODEL_CALLS_ENABLED:'true',META_CREDITS_CONFIRMED:'true',META_BILLING_MODE:'Standard',MODEL_API_KEY:'test-key'} as unknown as Parameters<typeof api.fetch>[1];
+    try{
+      const response=await api.fetch(new Request('http://localhost/api/v1/workflows/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}),modelEnv);
+      expect(response.status).toBe(200);
+      const body=await response.json() as {workflow:typeof missingApproval};
+      expect(body.workflow.policyRules[0]).toMatchObject({predicate:'ANY'});
+      expect(body.workflow.conditions[0]).toMatchObject({freshnessRequirement:60,observedAt:'2026-10-30T00:00:00.000Z'});
+      await expect((await import('@minsk/simulator')).evaluate(body.workflow,undefined,new Date('2026-10-30T00:02:00.000Z')).then(result=>result.outcome)).resolves.toBe('INDETERMINATE');
+    }finally{globalThis.fetch=originalFetch;}
+  });
+  it('drops invented freshness and observation timestamps while retaining valid source spans',async()=>{
+    const text='Release requires approval. Approval is present. Agent checks no condition before release.';
+    const extracted={title:'Unverified temporal claim',conditions:[{id:'approval',name:'Approval',expectedValue:true,observedValue:true,evidence:'Approval is present',freshnessRequirement:60,observedAt:'2026-10-30T00:00:00.000Z'}],policyRules:[{id:'policy',description:'Release requires approval',subjectStepId:'release',predicate:'ALL',requiredConditionIds:['approval'],evidence:'Release requires approval.'}],steps:[{id:'release',name:'Release',actionType:'DEPLOY',dependsOn:[],executionGateIds:[],evidence:'Agent checks no condition before release.'}]};
+    const originalFetch=globalThis.fetch;
+    globalThis.fetch=vi.fn(async()=>Response.json({id:'resp-temporal',output:[{content:[{type:'output_text',text:JSON.stringify(extracted)}]}],usage:{input_tokens:100,output_tokens:100}}));
+    const modelLedger={...ledger,reserve:async()=>({allowed:true}),settle:async()=>{},markUnknown:async()=>{}};
+    const modelEnv={BUDGET:{getByName:()=>modelLedger},MODEL_CALLS_ENABLED:'true',META_CREDITS_CONFIRMED:'true',META_BILLING_MODE:'Standard',MODEL_API_KEY:'test-key'} as unknown as Parameters<typeof api.fetch>[1];
+    try{const response=await api.fetch(new Request('http://localhost/api/v1/workflows/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}),modelEnv);const body=await response.json() as {workflow:typeof missingApproval};expect(body.workflow.conditions[0]).toMatchObject({freshnessRequirement:null,observedAt:null});}finally{globalThis.fetch=originalFetch;}
   });
   it('keeps controlled comparison routes inaccessible without the private evaluation token',async()=>{
     const assisted=await post('/api/v1/evaluation/investigate',{workflow:missingApproval,modelId:'muse-wonder-1.0'});

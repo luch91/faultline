@@ -3,7 +3,7 @@ import { heldoutSpecs, heldoutWorkflow } from '../model-evaluation/heldout';
 import { missingApproval } from '../fixtures/workflows/missing-approval';
 import { verifyCertificate } from '../packages/simulator/src/certificate';
 
-const vars=Object.fromEntries((await readFile('apps/api/.dev.vars','utf8')).split(/\r?\n/).filter(line=>/^[A-Za-z_][A-Za-z0-9_]*=/.test(line)).map(line=>{const index=line.indexOf('=');return [line.slice(0,index),line.slice(index+1)];}));
+const vars={...Object.fromEntries((await readFile('apps/api/.dev.vars','utf8').catch(()=>'' )).split(/\r?\n/).filter(line=>/^[A-Za-z_][A-Za-z0-9_]*=/.test(line)).map(line=>{const index=line.indexOf('=');return [line.slice(0,index),line.slice(index+1)];})),MINSK_EVAL_TOKEN:process.env.MINSK_EVAL_TOKEN??'',BASETEN_TEST_TOKEN:process.env.BASETEN_TEST_TOKEN??''};
 const headers={'Content-Type':'application/json','X-Minsk-Eval-Token':vars.MINSK_EVAL_TOKEN,'X-Minsk-Test-Token':vars.BASETEN_TEST_TOKEN};
 const base=process.env.MINSK_SMOKE_API_URL??'http://127.0.0.1:8798';
 if(!/^(https:\/\/minsk-api-preview\.judithorluchee\.workers\.dev|http:\/\/127\.0\.0\.1:\d+)$/.test(base))throw new Error('Unsupported smoke Worker URL');

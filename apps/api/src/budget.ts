@@ -12,8 +12,9 @@ export function providerCeiling(provider:BillingProvider,settings:{META_CEILING_
   const ceiling=Number(raw);
   return Number.isSafeInteger(ceiling)&&(provider!=='Meta'||ceiling<=50_000_000)?ceiling:null;
 }
-const DAILY_REQUEST_LIMIT=30;
-const CLIENT_REQUEST_LIMIT=5;
+export function configuredLimit(value:string|undefined,fallback:number,maximum:number):number {if(value===undefined)return fallback;const parsed=Number(value);return Number.isInteger(parsed)&&parsed>0&&parsed<=maximum?parsed:fallback;}
+export function publicQuotaLimits(settings:{PUBLIC_GLOBAL_REQUESTS_PER_MINUTE?:string;PUBLIC_CLIENT_REQUESTS_PER_MINUTE?:string;PUBLIC_GLOBAL_MODEL_CALLS_PER_DAY?:string;PUBLIC_CLIENT_MODEL_CALLS_PER_DAY?:string}){return {globalRequestsPerMinute:configuredLimit(settings.PUBLIC_GLOBAL_REQUESTS_PER_MINUTE,300,10_000),clientRequestsPerMinute:configuredLimit(settings.PUBLIC_CLIENT_REQUESTS_PER_MINUTE,30,1_000),globalModelCallsPerDay:configuredLimit(settings.PUBLIC_GLOBAL_MODEL_CALLS_PER_DAY,30,100_000),clientModelCallsPerDay:configuredLimit(settings.PUBLIC_CLIENT_MODEL_CALLS_PER_DAY,5,1_000)};}
+export function quotaAdmission(globalCount:number,clientCount:number,globalLimit:number,clientLimit:number,reason:string){return globalCount>=globalLimit||clientCount>=clientLimit?{allowed:false,reason}:{allowed:true};}
 export function evaluationAdmission(count:number,costMicroUsd:number,estimatedMicroUsd:number,limit=6,ceilingMicroUsd=300_000,provider:BillingProvider='Meta'){
   if(!Number.isInteger(limit)||limit<1||limit>100||!Number.isInteger(ceilingMicroUsd)||ceilingMicroUsd<1||ceilingMicroUsd>10_000_000)return {allowed:false,reason:'Invalid evaluation budget configuration'};
   if(count>=limit)return {allowed:false,reason:'Evaluation call limit reached'};
@@ -39,7 +40,7 @@ export class BudgetLedger extends DurableObject {
     this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS investigation_lock (id INTEGER PRIMARY KEY CHECK (id=1), started INTEGER NOT NULL)');
   }
   admit(client:string):{allowed:boolean;reason?:string}{
-    this.initialize();const minute=new Date().toISOString().slice(0,16);for(const [key,limit] of [[`global:${minute}`,300],[`client:${client}:${minute}`,30]] as const){const count=this.ctx.storage.sql.exec<{count:number}>('SELECT count FROM request_counts WHERE key=?',key).toArray()[0]?.count??0;if(count>=limit)return {allowed:false,reason:'Request rate limit exceeded'};}
+    this.initialize();const minute=new Date().toISOString().slice(0,16);const quotas=publicQuotaLimits(this.env as {PUBLIC_GLOBAL_REQUESTS_PER_MINUTE?:string;PUBLIC_CLIENT_REQUESTS_PER_MINUTE?:string;PUBLIC_GLOBAL_MODEL_CALLS_PER_DAY?:string;PUBLIC_CLIENT_MODEL_CALLS_PER_DAY?:string});const globalCount=this.ctx.storage.sql.exec<{count:number}>('SELECT count FROM request_counts WHERE key=?',`global:${minute}`).toArray()[0]?.count??0;const clientCount=this.ctx.storage.sql.exec<{count:number}>('SELECT count FROM request_counts WHERE key=?',`client:${client}:${minute}`).toArray()[0]?.count??0;const admission=quotaAdmission(globalCount,clientCount,quotas.globalRequestsPerMinute,quotas.clientRequestsPerMinute,'Request rate limit exceeded');if(!admission.allowed)return admission;
     for(const key of [`global:${minute}`,`client:${client}:${minute}`])this.ctx.storage.sql.exec('INSERT INTO request_counts (key,count) VALUES (?,1) ON CONFLICT(key) DO UPDATE SET count=count+1',key);
     this.ctx.storage.sql.exec('DELETE FROM request_counts WHERE key NOT LIKE ?',`%${minute}`);
     return {allowed:true};
@@ -61,7 +62,7 @@ export class BudgetLedger extends DurableObject {
     const ceiling=providerCeiling(provider,this.env as {META_CEILING_MICRO_USD?:string});
     if(ceiling===null||!Number.isSafeInteger(estimatedMicroUsd)||estimatedMicroUsd<=0)return {allowed:false,reason:`Invalid ${provider} spending configuration or estimate`};
     if(total+estimatedMicroUsd>ceiling)return {allowed:false,reason:`Internal ${provider} spending ceiling reached`};
-    if(client!=='eval:controlled'&&(daily>=DAILY_REQUEST_LIMIT||perClient>=CLIENT_REQUEST_LIMIT))return {allowed:false,reason:'Model request allowance reached'};
+    const quotas=publicQuotaLimits(this.env as {PUBLIC_GLOBAL_REQUESTS_PER_MINUTE?:string;PUBLIC_CLIENT_REQUESTS_PER_MINUTE?:string;PUBLIC_GLOBAL_MODEL_CALLS_PER_DAY?:string;PUBLIC_CLIENT_MODEL_CALLS_PER_DAY?:string});if(client!=='eval:controlled'){const admission=quotaAdmission(daily,perClient,quotas.globalModelCallsPerDay,quotas.clientModelCallsPerDay,'Model request allowance reached');if(!admission.allowed)return admission;}
     this.ctx.storage.sql.exec('INSERT INTO calls (id,day,session,reserved,actual,kind,state,model,provider) VALUES (?,?,?,?,NULL,?,\'RESERVED\',?,?)',id,day,client,estimatedMicroUsd,kind,model,provider);
     return {allowed:true};
   }

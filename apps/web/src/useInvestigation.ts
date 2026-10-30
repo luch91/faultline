@@ -5,8 +5,10 @@ export type ModelRecord = { id: string | null; modelId: string; provider: string
 export type Investigation = { investigationId?: string; baseline: EvaluationResult; intervention: Intervention; failure: EvaluationResult; verification: { repaired: EvaluationResult; safeguard: { stepId: string; conditionId: string }; resolved: boolean } | null; trace: Array<{ id: string; tool: string; status: string; arguments: unknown; result: unknown; modelId?: string; responseId?: string | null }>; routing?: {modelId:string;reason:string;escalated:boolean}; model: ModelRecord };
 export type Scenario = 'BASELINE' | 'COUNTERFACTUAL' | 'SAFEGUARD';
 const API = import.meta.env.VITE_API_URL || '';
+const sessionKey='minsk-public-session';
+function sessionId(){const existing=localStorage.getItem(sessionKey);if(existing)return existing;const created=crypto.randomUUID().replaceAll('-','');localStorage.setItem(sessionKey,created);return created;}
 async function call<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${API}${path}`, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal });
+  const response = await fetch(`${API}${path}`, { method: body ? 'POST' : 'GET', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}),'X-Minsk-Session':sessionId() }, body: body ? JSON.stringify(body) : undefined, signal });
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error(`API returned ${response.status} without JSON. Check the configured API URL.`);
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || `Request failed: ${response.status}`);
@@ -71,6 +73,10 @@ export function useInvestigation() {
   }
   function loadWorkflowJson(text:string) { return run('Validating workflow',s=>call<{workflow:Workflow}>('/api/v1/workflows/validate',JSON.parse(text),s),x=>{void selectWorkflow(x.workflow);}); }
   function editCondition(id: string, value: boolean | null) { if (workflow) return selectWorkflow({ ...workflow, conditions: workflow.conditions.map(c => c.id === id ? { ...c, observedValue: value } : c) }); }
+  function editConditionDetails(id:string,patch:Partial<Pick<Workflow['conditions'][number],'name'|'expectedValue'|'freshnessRequirement'|'observedAt'|'sourceSpans'>>) {if(workflow)return selectWorkflow({...workflow,conditions:workflow.conditions.map(c=>c.id===id?{...c,...patch}:c)});}
+  function editConditionEvidence(id:string,excerpt:string){if(workflow){const source=workflow.sourceDocuments[0];if(!source)return;const startOffset=source.text.indexOf(excerpt);if(startOffset<0){setError('Evidence must be an exact excerpt from the workflow source.');return;}return editConditionDetails(id,{sourceSpans:[{sourceId:source.id,startOffset,endOffset:startOffset+excerpt.length,excerpt,verified:true}]});}}
+  function editRulePredicate(id:string,predicate:'ALL'|'ANY'){if(workflow)return selectWorkflow({...workflow,policyRules:workflow.policyRules.map(rule=>rule.id===id?{...rule,predicate}:rule)});}
+  function editRuleEvidence(id:string,excerpt:string){if(workflow){const rule=workflow.policyRules.find(item=>item.id===id);const source=workflow.sourceDocuments[0];if(!rule||!source)return;const startOffset=source.text.indexOf(excerpt);if(startOffset<0){setError('Evidence must be an exact excerpt from the workflow source.');return;}return selectWorkflow({...workflow,policyRules:workflow.policyRules.map(item=>item.id===id?{...item,sourceSpans:[{sourceId:source.id,startOffset,endOffset:startOffset+excerpt.length,excerpt,verified:true}]}:item)});}}
   function toggleGate(stepId: string, conditionId: string) { if (workflow) return selectWorkflow({ ...workflow, steps: workflow.steps.map(step => step.id === stepId ? { ...step, executionGateIds: step.executionGateIds.includes(conditionId) ? step.executionGateIds.filter(id => id !== conditionId) : [...step.executionGateIds, conditionId] } : step) }); }
   function selectCondition(id: string) {
     const c = workflow?.conditions.find(item => item.id === id);
@@ -101,6 +107,6 @@ export function useInvestigation() {
   function runChallenger(){if(!workflow)return;return run('Running Baseten challenger',s=>call<unknown>('/api/v1/challengers/open-weight',{workflow,...(investigationId&&applied?{hosted:{investigationId,intervention:applied}}:{})},s),setChallenger);}
   const result = scenario === 'SAFEGUARD' ? verification?.repaired ?? baseline : scenario === 'COUNTERFACTUAL' ? failure ?? baseline : baseline;
   const sceneWorkflow = workflow && scenario === 'SAFEGUARD' && verification ? { ...workflow, steps: workflow.steps.map(step => step.id === verification.safeguard.stepId && !step.executionGateIds.includes(verification.safeguard.conditionId) ? { ...step, executionGateIds: [...step.executionGateIds, verification.safeguard.conditionId] } : step) } : workflow;
-  return { samples, workflow, sceneWorkflow, selected, setSelected, source, setSource, baseline, failure, verification, intervention, applied, trace, model, extractionModel, routing, scenario, setScenario, result, busy, error, liveEnabled, challengerEnabled,challenger,runChallenger,loading, certificate, benchmark, loadBenchmark,loadWorkflowJson, selectWorkflow, selectCondition, editCondition, toggleGate, analyze, applyIntervention, investigate, verify, exportCertificate, cancel: () => controller.current?.abort() };
+  return { samples, workflow, sceneWorkflow, selected, setSelected, source, setSource, baseline, failure, verification, intervention, applied, trace, model, extractionModel, routing, scenario, setScenario, result, busy, error, liveEnabled, challengerEnabled,challenger,runChallenger,loading, certificate, benchmark, loadBenchmark,loadWorkflowJson, selectWorkflow, selectCondition, editCondition, editConditionDetails,editConditionEvidence,editRulePredicate,editRuleEvidence,toggleGate, analyze, applyIntervention, investigate, verify, exportCertificate, cancel: () => controller.current?.abort() };
 }
 export type InvestigationState = ReturnType<typeof useInvestigation>;

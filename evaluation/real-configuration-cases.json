@@ -1,0 +1,30 @@
+{
+  "version": "1",
+  "purpose": "Read-only configuration evidence cases. These are not real-world accuracy claims.",
+  "cases": [
+    {
+      "id": "RC-01",
+      "source": "https://github.com/luch91/minsk/blob/main/.github/workflows/ci.yml",
+      "retrievedAt": "2026-10-30",
+      "kind": "GitHub Actions continuous integration workflow",
+      "groundTruth": {
+        "deploymentActionObserved": false,
+        "humanApprovalObserved": false,
+        "expectedAssessment": "INDETERMINATE",
+        "justification": "The observed workflow runs checks only. It contains no deployment job, environment reference, or external deployment control, so it cannot establish whether production approval is enforced."
+      }
+    },
+    {
+      "id": "RC-02",
+      "source": "https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idenvironment",
+      "retrievedAt": "2026-10-30",
+      "kind": "GitHub Actions environment-protection documentation",
+      "groundTruth": {
+        "environmentProtectionCanEnforceApproval": true,
+        "workflowYamlAloneEstablishesProtection": false,
+        "expectedAssessment": "INDETERMINATE",
+        "justification": "An environment name in workflow YAML does not expose required reviewers or protection settings. Those settings must be read separately before describing an approval control as missing."
+      }
+    }
+  ]
+}

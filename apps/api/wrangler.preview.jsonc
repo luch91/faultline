@@ -12,9 +12,13 @@
     "META_CEILING_MICRO_USD": "49000000",
     "MINSK_EVAL_MAX_CALLS": "100",
     "MINSK_EVAL_MAX_MICRO_USD": "2000000",
+    "PUBLIC_GLOBAL_REQUESTS_PER_MINUTE": "300",
+    "PUBLIC_CLIENT_REQUESTS_PER_MINUTE": "30",
+    "PUBLIC_GLOBAL_MODEL_CALLS_PER_DAY": "30",
+    "PUBLIC_CLIENT_MODEL_CALLS_PER_DAY": "5",
     "META_CREDITS_CONFIRMED": "true",
     "META_BILLING_MODE": "Standard",
-    "ALLOWED_ORIGIN": "https://minsk-web-preview.pages.dev,https://issue8.minsk-web-preview.pages.dev,https://feat-issue-8-live-models.minsk-web-preview.pages.dev"
+    "ALLOWED_ORIGIN": "https://minsk-web-preview.pages.dev,https://issue8.minsk-web-preview.pages.dev,https://feat-issue-8-live-models.minsk-web-preview.pages.dev,https://feat-final-engineering-closu.minsk-web-preview.pages.dev"
   },
   "durable_objects": {
     "bindings": [{ "name": "BUDGET", "class_name": "BudgetLedger" }]
