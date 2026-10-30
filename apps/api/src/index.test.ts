@@ -66,10 +66,22 @@ describe('deterministic HTTP flow',()=>{
     expect(certificate.evaluationResult.outcome).toBe('UNSAFE_EXECUTION');
     expect(certificate.verificationResult.outcome).toBe('SAFE_BLOCK');
     expect(certificate.integrityHash).toMatch(/^[a-f0-9]{64}$/);
+    const checked=await post('/api/v1/reports/verify',{certificate,workflow:missingApproval});
+    expect(await checked.json()).toMatchObject({valid:true,inputVerified:true,provenanceAuthenticity:'NOT_VERIFIED'});
+    const modified=await post('/api/v1/reports/verify',{certificate:{...certificate,integrityHash:'0'.repeat(64)},workflow:missingApproval});
+    expect(await modified.json()).toMatchObject({valid:false});
   });
   it('rejects a cross-origin request',async()=>{
     const response=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://other.example'}}),env);
     expect(response.status).toBe(403);
+  });
+  it('allows only exact configured preview origins',async()=>{
+    const configured={...env,ALLOWED_ORIGIN:'https://minsk.example,https://issue8.example'};
+    const allowed=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://issue8.example'}}),configured);
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://issue8.example');
+    const denied=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://issue8.example.attacker.test'}}),configured);
+    expect(denied.status).toBe(403);
   });
   it('checks preflight origin without consuming the application rate limit',async()=>{
     const original=ledger.admit;let admissions=0;

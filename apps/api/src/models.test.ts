@@ -16,8 +16,8 @@ describe('server model selection and accounting',()=>{
     expect(()=>modelConfig('client-supplied-model')).toThrow('Unsupported model ID');
   });
   it('prices reservations and reported usage by model',()=>{
-    expect(estimateMicroUsd(3000,1000,'muse-spark-1.3')).toBe(5500);
-    expect(estimateMicroUsd(3000,1000,'muse-wonder-1.0')).toBe(24000);
+    expect(estimateMicroUsd(3000,1000,'muse-spark-1.3')).toBe(8000);
+    expect(estimateMicroUsd(3000,1000,'muse-wonder-1.0')).toBe(32000);
     expect(actualMicroUsd(1000,1000,'muse-spark-1.3')).toBe(5500);
     expect(actualMicroUsd(1000,1000,'muse-wonder-1.0')).toBe(24000);
   });

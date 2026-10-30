@@ -1,11 +1,28 @@
 import {describe,expect,it} from 'vitest';
-import {evaluationAdmission} from './budget';
+import {evaluationAdmission,providerCeiling} from './budget';
+
+describe('provider spending configuration',()=>{
+  it('defaults Meta to fifty dollars and leaves Baseten uncapped',()=>{
+    expect(providerCeiling('Meta',{})).toBe(50_000_000);
+    expect(providerCeiling('Baseten',{})).toBe(Number.POSITIVE_INFINITY);
+  });
+  it('accepts explicit limits and rejects malformed values',()=>{
+    expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'7500000'})).toBe(7_500_000);
+    expect(providerCeiling('Baseten',{})).toBe(Number.POSITIVE_INFINITY);
+    expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'Infinity'})).toBeNull();
+    expect(providerCeiling('Meta',{META_CEILING_MICRO_USD:'50000001'})).toBeNull();
+  });
+});
 
 describe('controlled evaluation dispatch limit',()=>{
   it('allows call six and blocks call seven across providers',()=>{
     const providers=['Meta','Meta','Meta','Meta','Meta','Baseten'];
     for(let count=0;count<providers.length;count++)expect(evaluationAdmission(count,count*20_000,20_000).allowed).toBe(true);
     expect(evaluationAdmission(providers.length,120_000,20_000)).toMatchObject({allowed:false,reason:'Evaluation call limit reached'});
+  });
+  it('does not apply the Meta evaluation estimate ceiling to Baseten',()=>{
+    expect(evaluationAdmission(0,299_000,10_000,6,300_000,'Meta')).toMatchObject({allowed:false,reason:'Evaluation Meta estimate ceiling reached'});
+    expect(evaluationAdmission(0,299_000,10_000,6,300_000,'Baseten')).toMatchObject({allowed:true});
   });
   it('counts retries and fallback as new dispatches',()=>{
     const attempts=['Spark','Wonder','Wonder retry','Spark fallback','Baseten','Spark'];

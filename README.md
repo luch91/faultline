@@ -1,61 +1,75 @@
 # Minsk
 
 [![CI](https://github.com/luch91/minsk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/luch91/minsk/actions/workflows/ci.yml)
-![TypeScript](https://img.shields.io/badge/TypeScript-in%20use-3178C6?logo=typescript&logoColor=white)
-![React](https://img.shields.io/badge/React-frontend-149ECA?logo=react&logoColor=white)
-[![License](https://img.shields.io/github/license/luch91/minsk)](https://github.com/luch91/minsk/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/luch91/minsk)](LICENSE)
 
-Minsk tests declared deployment policy against the conditions an automated workflow actually checks.
+Minsk investigates discrepancies between a workflow's declared policies and the conditions its execution steps actually enforce. It tests hypothetical changes, explains the resulting execution path, and verifies candidate safeguards against a deterministic model of the workflow.
 
-## Staging preview
+The simulator evaluates declared workflow semantics. It does not execute an external deployment or verify infrastructure settings that were not supplied as evidence.
 
-[Open the Minsk functional preview](https://minsk-web-preview.pages.dev). Its [API health endpoint](https://minsk-api-preview.judithorluchee.workers.dev/healthz) responds successfully. Live Meta and Baseten inference are disabled on this preview.
+```text
+Workflow text or structured input
+  -> Spark extraction and source validation
+  -> Policy requirements and execution gates
+  -> Deterministic baseline and counterfactual
+  -> Model-proposed safeguard and deterministic verification
+  -> Trace and integrity-checked certificate
+```
 
-## Product demonstration
+Spark handles extraction and routine investigations. Wonder can be routed to complex investigations. A Baseten-hosted Meta Muse Spark Open challenger proposes additional interventions. Every model proposal is validated and simulator outcomes remain authoritative.
 
-The included Missing Approval fixture declares human approval as mandatory but leaves it out of the execution gate. Removing approval produces `UNSAFE_EXECUTION`. Adding the approval gate to a copied graph produces `SAFE_BLOCK`.
+## Quickstart
 
-This branch provides a temporary functional interface with workflow input, structured conditions and gates, evaluation results, replay traces, certificates, and benchmark results. The rejected visual graph is removed from the active application.
+Use Node.js 22 and pnpm 10.18.3.
 
-## Approach
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm benchmark
+pnpm dev
+```
 
-The simulator evaluates policy rules and execution gates independently. Meta Muse Spark handles evidence-linked extraction and routine investigation. Muse Wonder is routed to bounded complex investigations. A Baseten-hosted Meta Muse Spark Open challenger independently proposes condition changes when its private test switch is enabled. All candidates are validated and evaluated by the same simulator. The frontend lets a user correct observations and gates before simulation.
+The offline benchmark uses 12 versioned cases and an independent reference oracle. It makes no provider calls. The [preview](https://minsk-web-preview.pages.dev) exposes a budgeted live test environment only when its server-side switches and provider secrets are configured. Its status is visible at `/api/v1/budget`; a disabled or exhausted provider is reported to the caller rather than simulated.
 
-## Architecture
+For the Missing Approval fixture, the baseline is `SAFE_EXECUTION`. Changing approval to false yields `UNSAFE_EXECUTION` because deployment lacks that gate. Adding the gate yields `SAFE_BLOCK` while the policy condition remains violated.
 
-- `apps/web`: React and Vite with a minimal functional testing interface.
-- `apps/api`: Cloudflare Worker routes, Meta calls, and Durable Object spending ledger.
-- `packages/contracts`: Zod data contracts.
-- `packages/simulator`: pure TypeScript evaluator.
-- `fixtures`: reproducible scenario data.
-- `benchmark/cases`: 12 versioned, independently justified failure cases.
+## Live model setup
 
-## Evidence and semantics
+Copy the names in [.env.example](.env.example) into the ignored `apps/api/.dev.vars` and provide your own credentials there. Never put provider keys in browser code or commit them. Start the Worker locally with Wrangler; see [model integration](docs/model-integration.md).
 
-Model extraction is accepted only when every cited excerpt matches the submitted text and graph references validate. Missing observations evaluate as `UNKNOWN`. A policy violation with eligible execution is `UNSAFE_EXECUTION`. A correctly blocked operation is `SAFE_BLOCK`. Evaluation IDs omit timestamps.
+| Setting | Purpose | Safe default |
+| --- | --- | --- |
+| `MODEL_API_KEY` | Server-side Meta key | unset |
+| `MODEL_CALLS_ENABLED` | Meta kill switch | false |
+| `WONDER_ENABLED` | Allow Wonder escalation | false |
+| `META_CREDITS_CONFIRMED` and `META_BILLING_MODE` | Operator billing confirmation | false and Standard |
+| `META_CEILING_MICRO_USD` | Cumulative Meta estimate ceiling | 50000000 |
+| `BASETEN_API_KEY` | Server-side Baseten key | unset |
+| `BASETEN_CHALLENGER_ENABLED` and `BASETEN_CREDITS_CONFIRMED` | Baseten controls | false |
+| `PUBLIC_CHALLENGER_ENABLED` | Permit public challenger calls | false |
+| `BASETEN_TEST_TOKEN` | Protect challenger access | unset |
+| `MINSK_EVAL_TOKEN` | Protect controlled benchmark access | unset |
+| `MINSK_EVAL_MAX_CALLS`, `MINSK_EVAL_MAX_MICRO_USD` | Controlled evaluation dispatch limit and Meta estimate ceiling | 6 calls, 300000 |
+| `ALLOWED_ORIGIN` | Allowed browser origin | unset |
 
-## Meta status
+Reservations, settled token estimates and unknown usage are recorded in a persistent Durable Object. Meta is constrained by the $50 application ceiling; Baseten is metered but has no application-dollar ceiling. Neither is a provider-side billing guarantee. Check [Meta](https://dev.meta.ai/docs/pricing-rate-limits) and [Baseten](https://www.baseten.co/pricing/) rates and your account's billing conditions before enabling calls.
 
-Controlled local tests completed Spark extraction and two-turn Spark and Wonder investigations. Both investigators called `run_counterfactual`, received a simulator result, then called `propose_safeguard`. Investigation certificates verify server-side model provenance before export. A separate Baseten Muse Spark Open call proposed three candidates that the simulator evaluated. The local ledger records reserved, provider-reported, and unknown usage separately. Meta Billing showed a rounded $0.04 balance change for the five latest Meta calls against a $0.033150 local estimate. Baseten promotional balance and award eligibility remain unverified; the public preview keeps all live inference disabled.
+## Benchmarks and certificates
 
-## Install
+```sh
+pnpm benchmark
+pnpm benchmark:models -- --provider meta
+pnpm verify:certificate path/to/certificate.json path/to/workflow.json
+```
 
-Use Node 22 and pnpm 10. Run `pnpm install --frozen-lockfile` in the repository root. Copy `.env.example` values into `apps/api/.dev.vars` only when local live inference is authorized. The key file is ignored by Git. `pnpm dev` starts the local Worker and frontend with model calls disabled.
+`benchmark:models` performs fresh inference against the eight locked held-out cases, using `meta`, `baseten`, or `all`. Set `MINSK_EVAL_API_URL` and `MINSK_EVAL_TOKEN`; Baseten also requires `MINSK_EVAL_TEST_TOKEN`. Use a local Worker with your own keys, or an authorized HTTPS Worker with operator-provided access tokens. Results are written to ignored `model-evaluation/results/`. A stopped run can be continued with `--resume <result-path>`. Errors are recorded; synthetic results are not real-world accuracy claims.
 
-## Commands
+The independent verifier recomputes integrity and, when the original workflow is supplied, verifies the source, workflow and deterministic results. Integrity does not establish issuer authenticity.
 
-`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm benchmark`, `pnpm build`, `pnpm e2e`, `pnpm audit --audit-level high`, `pnpm check:content`, `pnpm check:secrets`. `pnpm benchmark` runs offline, includes a separate reference oracle, and writes JSON results in `benchmark/results`. `pnpm verify:certificate <certificate.json> [original-workflow.json]` independently checks an export. `pnpm model:evaluate` prints a call-free evaluation plan. Playwright E2E starts a local Worker and frontend without Meta inference.
+## API and development
 
-Set `MINSK_STAGING_URL` to a verified preview URL to run the browser journey against staging without starting local servers.
+Routes include `/healthz`, `/api/v1/samples`, `/api/v1/workflows/validate`, `/api/v1/workflows/extract`, `/api/v1/experiments/run`, `/api/v1/investigations`, `/api/v1/safeguards/verify`, `/api/v1/challengers/open-weight`, `/api/v1/reports/export`, `/api/v1/reports/verify`, `/api/v1/benchmark` and `/api/v1/budget`.
 
-## Security and limitations
+Run `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm check:content`, `pnpm check:secrets`, `pnpm audit --audit-level high` and `pnpm e2e`. For an API that returns HTML instead of JSON, check `VITE_API_URL`, the Worker health endpoint and its allowed origin. A disabled provider requires the switches, credentials and budget configuration described above.
 
-Minsk never runs a submitted workflow. It evaluates declared semantics rather than arbitrary programs. Extraction can be wrong and must be reviewed. Unknown or unstated execution conditions cannot be verified. Safeguards are hypothetical and do not guarantee production safety. The spending ledger is a protective control and must be reconciled with Meta Billing. Request and model-call limits are in place; live inference can be disabled through the Worker switch. Promotional-credit expiry is not detected automatically. The complete multi-tool catalogue remains outside this milestone.
-
-## Hackathon contribution
-
-Created for the Meta Global AI Developer Hackathon 2026 by Ekeleme Fortune under the `luch91` GitHub account. Participant status requires independent verification. No other contributors are claimed.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+Further reading: [architecture](docs/architecture.md), [benchmark](docs/benchmark.md), [model integration](docs/model-integration.md), [model evaluation](docs/model-evaluation.md), [provenance](docs/provenance.md), [security](docs/security.md), and [deployment](docs/deployment.md). See [CONTRIBUTING.md](CONTRIBUTING.md) and the [MIT license](LICENSE).

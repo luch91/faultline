@@ -1,0 +1,1076 @@
+{
+  "version": "1",
+  "timestamp": "2026-10-30T07:51:45.345Z",
+  "provider": "baseten",
+  "labelsVersion": "heldout-2026-10-30-v1",
+  "before": {
+    "liveModelEnabled": true,
+    "openWeightEnabled": true,
+    "mode": "Standard",
+    "configuration": {
+      "switchEnabled": true,
+      "creditsConfirmed": true,
+      "standardMode": true,
+      "keyPresent": true
+    },
+    "internalCeilingUsd": 0.25,
+    "conservativeAccountedUsd": 0.028846,
+    "basetenCeilingUsd": 0.25,
+    "basetenAccountedUsd": 0.005417,
+    "evaluation": {
+      "calls": 6,
+      "conservativeUsd": 0.159902,
+      "usagePricedUsd": 0.034263,
+      "reservedUsd": 0.159902
+    },
+    "states": {
+      "PROVIDER_USAGE": {
+        "calls": 5,
+        "usd": 0.028846
+      }
+    },
+    "models": {
+      "meta-models/muse-spark-open-1026": {
+        "calls": 1,
+        "usd": 0.005417,
+        "inputTokens": 328,
+        "outputTokens": 1178
+      },
+      "muse-spark-1.3": {
+        "calls": 3,
+        "usd": 0.007786,
+        "inputTokens": 2152,
+        "outputTokens": 1199
+      },
+      "muse-wonder-1.0": {
+        "calls": 2,
+        "usd": 0.02106,
+        "inputTokens": 1805,
+        "outputTokens": 692
+      }
+    },
+    "providers": {
+      "Baseten": {
+        "calls": 1,
+        "usd": 0.005417
+      },
+      "Meta": {
+        "calls": 5,
+        "usd": 0.028846
+      }
+    },
+    "providerBillingReconciled": false
+  },
+  "after": {
+    "liveModelEnabled": true,
+    "openWeightEnabled": true,
+    "mode": "Standard",
+    "configuration": {
+      "switchEnabled": true,
+      "creditsConfirmed": true,
+      "standardMode": true,
+      "keyPresent": true
+    },
+    "internalCeilingUsd": 0.25,
+    "conservativeAccountedUsd": 0.028846,
+    "basetenCeilingUsd": 0.25,
+    "basetenAccountedUsd": 0.031472,
+    "evaluation": {
+      "calls": 14,
+      "conservativeUsd": 0.233024,
+      "usagePricedUsd": 0.060318,
+      "reservedUsd": 0.233024
+    },
+    "states": {
+      "PROVIDER_USAGE": {
+        "calls": 5,
+        "usd": 0.028846
+      }
+    },
+    "models": {
+      "meta-models/muse-spark-open-1026": {
+        "calls": 9,
+        "usd": 0.031472,
+        "inputTokens": 2864,
+        "outputTokens": 6562
+      },
+      "muse-spark-1.3": {
+        "calls": 3,
+        "usd": 0.007786,
+        "inputTokens": 2152,
+        "outputTokens": 1199
+      },
+      "muse-wonder-1.0": {
+        "calls": 2,
+        "usd": 0.02106,
+        "inputTokens": 1805,
+        "outputTokens": 692
+      }
+    },
+    "providers": {
+      "Baseten": {
+        "calls": 9,
+        "usd": 0.031472
+      },
+      "Meta": {
+        "calls": 5,
+        "usd": 0.028846
+      }
+    },
+    "providerBillingReconciled": false
+  },
+  "rows": [
+    {
+      "caseId": "H01",
+      "task": "baseten",
+      "reference": {
+        "outcome": "UNSAFE_EXECUTION",
+        "repair": "SAFE_BLOCK",
+        "basis": "Approval is required by policy but absent from the execution gate."
+      },
+      "latencyMs": 2974,
+      "outcome": "UNSAFE_EXECUTION",
+      "targetMatched": true,
+      "outcomeCorrect": true,
+      "repairVerified": true,
+      "extractionCorrect": null,
+      "response": {
+        "challenger": {
+          "candidates": [
+            {
+              "conditionId": "h01-requirement",
+              "replacementValue": false,
+              "reason": "Tests enforcement when human approval is not present; system should deny execution and require approval."
+            },
+            {
+              "conditionId": "h01-signature",
+              "replacementValue": false,
+              "reason": "Tests enforcement when artifact signature is invalid or missing; system should deny execution and require valid signature."
+            }
+          ],
+          "provider": "Baseten",
+          "modelId": "meta-models/muse-spark-open-1026",
+          "responseId": "chatcmpl-af029bae2f8d443b83260dd5796a49db",
+          "usage": {
+            "inputTokens": 319,
+            "outputTokens": 637
+          },
+          "accountingStatus": "PROVIDER_USAGE",
+          "telemetry": {
+            "latencyMs": 2844,
+            "reservedMicroUsd": 9143,
+            "estimatedActualMicroUsd": 3106,
+            "providerChargeUsd": null
+          }
+        },
+        "experiments": [
+          {
+            "intervention": {
+              "id": "baseten-h01-requirement",
+              "targetConditionId": "h01-requirement",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Tests enforcement when human approval is not present; system should deny execution and require approval.",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "4b8551506fa18eb784bde7f11ae02831e2ce6a891266ec883d8b6d0fdff3d69d",
+              "scenarioId": "H01",
+              "baselineHash": "b06dbbc03a1f5ec746665e9c608f51737aaf52fc4d458356aefd8beab68d7d0f",
+              "interventionHash": "696dcf1c49f714362f16ff347ff7544ae8338155a441abc0d07270339068875c",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h01-execute",
+                  "eligibility": "SATISFIED",
+                  "executes": true
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h01-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h01-execute",
+                  "status": "EXECUTED",
+                  "reason": "Execution gates and dependencies satisfied"
+                }
+              ],
+              "affectedNodeIds": [
+                "h01-requirement",
+                "h01-execute"
+              ],
+              "firstViolation": "h01-policy",
+              "unknownConditions": [],
+              "outcome": "UNSAFE_EXECUTION",
+              "timestamp": "2026-10-30T07:51:23.804Z"
+            }
+          },
+          {
+            "intervention": {
+              "id": "baseten-h01-signature",
+              "targetConditionId": "h01-signature",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Tests enforcement when artifact signature is invalid or missing; system should deny execution and require valid signature.",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "1e4355f66bf74ed8ca972f505e62c2cfad369bd1eb60c7e352e070144d664e4e",
+              "scenarioId": "H01",
+              "baselineHash": "b06dbbc03a1f5ec746665e9c608f51737aaf52fc4d458356aefd8beab68d7d0f",
+              "interventionHash": "6df60e4320d71d6b03aff5af8213671f686b204cd8134a74eaa9ae2025930e8f",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h01-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h01-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h01-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h01-signature",
+                "h01-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:23.804Z"
+            }
+          }
+        ],
+        "comparison": null
+      }
+    },
+    {
+      "caseId": "H02",
+      "task": "baseten",
+      "reference": {
+        "outcome": "UNSAFE_EXECUTION",
+        "repair": "SAFE_BLOCK",
+        "basis": "Tests are required by policy but absent from the execution gate."
+      },
+      "latencyMs": 4701,
+      "outcome": "UNSAFE_EXECUTION",
+      "targetMatched": true,
+      "outcomeCorrect": true,
+      "repairVerified": true,
+      "extractionCorrect": null,
+      "response": {
+        "challenger": {
+          "candidates": [
+            {
+              "conditionId": "h02-requirement",
+              "replacementValue": false,
+              "reason": "Adversarial test: requirement not met to verify policy enforcement"
+            },
+            {
+              "conditionId": "h02-signature",
+              "replacementValue": false,
+              "reason": "Adversarial test: signature invalid to verify execution gate blocking"
+            }
+          ],
+          "provider": "Baseten",
+          "modelId": "meta-models/muse-spark-open-1026",
+          "responseId": "chatcmpl-0acae435340943aba392ae6dada0857b",
+          "usage": {
+            "inputTokens": 321,
+            "outputTokens": 1284
+          },
+          "accountingStatus": "PROVIDER_USAGE",
+          "telemetry": {
+            "latencyMs": 4642,
+            "reservedMicroUsd": 9147,
+            "estimatedActualMicroUsd": 5859,
+            "providerChargeUsd": null
+          }
+        },
+        "experiments": [
+          {
+            "intervention": {
+              "id": "baseten-h02-requirement",
+              "targetConditionId": "h02-requirement",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Adversarial test: requirement not met to verify policy enforcement",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "3e162114d2770c187fbd17e046402027e05ca8561c2f4f3e265ee731d5ded192",
+              "scenarioId": "H02",
+              "baselineHash": "59cafac8be26e83adbe4ac29f8af4b8fa5267b2e4c38f167ff498b97abc72eb9",
+              "interventionHash": "cb7b812958f5c13da24d7d27d05779356c0520634b2feb9120a9bc7ba584b044",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h02-execute",
+                  "eligibility": "SATISFIED",
+                  "executes": true
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h02-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h02-execute",
+                  "status": "EXECUTED",
+                  "reason": "Execution gates and dependencies satisfied"
+                }
+              ],
+              "affectedNodeIds": [
+                "h02-requirement",
+                "h02-execute"
+              ],
+              "firstViolation": "h02-policy",
+              "unknownConditions": [],
+              "outcome": "UNSAFE_EXECUTION",
+              "timestamp": "2026-10-30T07:51:28.599Z"
+            }
+          },
+          {
+            "intervention": {
+              "id": "baseten-h02-signature",
+              "targetConditionId": "h02-signature",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Adversarial test: signature invalid to verify execution gate blocking",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "f5b3f8112afa5165bae6ea3c4a43b41e2561c0f1b5a57e639ceaa5412fcca049",
+              "scenarioId": "H02",
+              "baselineHash": "59cafac8be26e83adbe4ac29f8af4b8fa5267b2e4c38f167ff498b97abc72eb9",
+              "interventionHash": "e3c0786bb3995bacf601ee18bc76f21b8a1783d5538f5d53d1738e63811485b9",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h02-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h02-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h02-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h02-signature",
+                "h02-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:28.599Z"
+            }
+          }
+        ],
+        "comparison": null
+      }
+    },
+    {
+      "caseId": "H03",
+      "task": "baseten",
+      "reference": {
+        "outcome": "UNSAFE_EXECUTION",
+        "repair": "SAFE_BLOCK",
+        "basis": "Compatibility is required by policy but absent from the execution gate."
+      },
+      "latencyMs": 3338,
+      "outcome": "UNSAFE_EXECUTION",
+      "targetMatched": true,
+      "outcomeCorrect": true,
+      "repairVerified": true,
+      "extractionCorrect": null,
+      "response": {
+        "challenger": {
+          "candidates": [
+            {
+              "conditionId": "h03-requirement",
+              "replacementValue": false,
+              "reason": "adversarial test of migration compatibility requirement enforcement"
+            },
+            {
+              "conditionId": "h03-signature",
+              "replacementValue": false,
+              "reason": "adversarial test of artifact signature gate enforcement"
+            }
+          ],
+          "provider": "Baseten",
+          "modelId": "meta-models/muse-spark-open-1026",
+          "responseId": "chatcmpl-2e3bdbe421d64245b257ffaaaeed7b09",
+          "usage": {
+            "inputTokens": 319,
+            "outputTokens": 572
+          },
+          "accountingStatus": "PROVIDER_USAGE",
+          "telemetry": {
+            "latencyMs": 3295,
+            "reservedMicroUsd": 9147,
+            "estimatedActualMicroUsd": 2830,
+            "providerChargeUsd": null
+          }
+        },
+        "experiments": [
+          {
+            "intervention": {
+              "id": "baseten-h03-requirement",
+              "targetConditionId": "h03-requirement",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "adversarial test of migration compatibility requirement enforcement",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "3d21f274f5764ff94c4f888a3a0ecfefc11cf15805a4ffe36227246a2267ae2c",
+              "scenarioId": "H03",
+              "baselineHash": "f51e494c2742bb0f0feb06da41578ae6dd4fd6a14cf18efee74c77318d9512b9",
+              "interventionHash": "e27f0e19d43930e7e9a9e841e34bc5490d98c2edaea67fe661c8fedeb1dc7967",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h03-execute",
+                  "eligibility": "SATISFIED",
+                  "executes": true
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h03-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h03-execute",
+                  "status": "EXECUTED",
+                  "reason": "Execution gates and dependencies satisfied"
+                }
+              ],
+              "affectedNodeIds": [
+                "h03-requirement",
+                "h03-execute"
+              ],
+              "firstViolation": "h03-policy",
+              "unknownConditions": [],
+              "outcome": "UNSAFE_EXECUTION",
+              "timestamp": "2026-10-30T07:51:31.956Z"
+            }
+          },
+          {
+            "intervention": {
+              "id": "baseten-h03-signature",
+              "targetConditionId": "h03-signature",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "adversarial test of artifact signature gate enforcement",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "aca2e4906828b64f2cf83b3d688cf0139c94181925d46ded97011b02fc938bc4",
+              "scenarioId": "H03",
+              "baselineHash": "f51e494c2742bb0f0feb06da41578ae6dd4fd6a14cf18efee74c77318d9512b9",
+              "interventionHash": "5b8b2f5b7e4081f429fea024ba7d3fb0281a462846ac6f08dabfed4132422ed8",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h03-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h03-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h03-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h03-signature",
+                "h03-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:31.956Z"
+            }
+          }
+        ],
+        "comparison": null
+      }
+    },
+    {
+      "caseId": "H04",
+      "task": "baseten",
+      "reference": {
+        "outcome": "UNSAFE_EXECUTION",
+        "repair": "SAFE_BLOCK",
+        "basis": "Security verification is required by policy but absent from the execution gate."
+      },
+      "error": "HTTP 502: Baseten returned malformed candidate JSON"
+    },
+    {
+      "caseId": "H05",
+      "task": "baseten",
+      "reference": {
+        "outcome": "SAFE_BLOCK",
+        "repair": null,
+        "basis": "The canary requirement is enforced as an execution gate."
+      },
+      "latencyMs": 4180,
+      "outcome": "SAFE_BLOCK",
+      "targetMatched": true,
+      "outcomeCorrect": true,
+      "repairVerified": null,
+      "extractionCorrect": null,
+      "response": {
+        "challenger": {
+          "candidates": [
+            {
+              "conditionId": "h05-requirement",
+              "replacementValue": false,
+              "reason": "Tests enforcement when requirement fails"
+            },
+            {
+              "conditionId": "h05-signature",
+              "replacementValue": false,
+              "reason": "Tests enforcement when signature fails"
+            }
+          ],
+          "provider": "Baseten",
+          "modelId": "meta-models/muse-spark-open-1026",
+          "responseId": "chatcmpl-f38e43927d0d4ff4be151484472f7e00",
+          "usage": {
+            "inputTokens": 326,
+            "outputTokens": 834
+          },
+          "accountingStatus": "PROVIDER_USAGE",
+          "telemetry": {
+            "latencyMs": 4142,
+            "reservedMicroUsd": 9151,
+            "estimatedActualMicroUsd": 3952,
+            "providerChargeUsd": null
+          }
+        },
+        "experiments": [
+          {
+            "intervention": {
+              "id": "baseten-h05-requirement",
+              "targetConditionId": "h05-requirement",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Tests enforcement when requirement fails",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "71c2910a76389919691fd8538c6c627de645e2ec5b4365b9c578a6b84acd13ca",
+              "scenarioId": "H05",
+              "baselineHash": "3b7883a88d46c444b535cbd70495612c0c40ae947c9c1e090dc53ee54730e82c",
+              "interventionHash": "d72713da9855fea01de3a873f20e41da3af750d998c87598958a02a64c03c83d",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h05-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h05-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h05-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h05-requirement",
+                "h05-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:38.086Z"
+            }
+          },
+          {
+            "intervention": {
+              "id": "baseten-h05-signature",
+              "targetConditionId": "h05-signature",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Tests enforcement when signature fails",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "3dc1ab76ca0bb001b04aea641ee1c5a0154afbce572e562449e758d2856892cd",
+              "scenarioId": "H05",
+              "baselineHash": "3b7883a88d46c444b535cbd70495612c0c40ae947c9c1e090dc53ee54730e82c",
+              "interventionHash": "dc798ec54f6aea82c56490fe5d0404dddd02bc6914274178d1503e6b53e084b2",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h05-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h05-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h05-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h05-signature",
+                "h05-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:38.086Z"
+            }
+          }
+        ],
+        "comparison": null
+      }
+    },
+    {
+      "caseId": "H06",
+      "task": "baseten",
+      "reference": {
+        "outcome": "SAFE_BLOCK",
+        "repair": null,
+        "basis": "The branch requirement is enforced as an execution gate."
+      },
+      "latencyMs": 1698,
+      "outcome": "SAFE_BLOCK",
+      "targetMatched": true,
+      "outcomeCorrect": true,
+      "repairVerified": null,
+      "extractionCorrect": null,
+      "response": {
+        "challenger": {
+          "candidates": [
+            {
+              "conditionId": "h06-requirement",
+              "replacementValue": false,
+              "reason": "Tests enforcement of release branch authorization gate when requirement is not met."
+            },
+            {
+              "conditionId": "h06-signature",
+              "replacementValue": false,
+              "reason": "Tests enforcement of artifact signature gate when signature is invalid."
+            }
+          ],
+          "provider": "Baseten",
+          "modelId": "meta-models/muse-spark-open-1026",
+          "responseId": "chatcmpl-9be642c6519b4062addfcda116037241",
+          "usage": {
+            "inputTokens": 326,
+            "outputTokens": 399
+          },
+          "accountingStatus": "PROVIDER_USAGE",
+          "telemetry": {
+            "latencyMs": 1643,
+            "reservedMicroUsd": 9157,
+            "estimatedActualMicroUsd": 2104,
+            "providerChargeUsd": null
+          }
+        },
+        "experiments": [
+          {
+            "intervention": {
+              "id": "baseten-h06-requirement",
+              "targetConditionId": "h06-requirement",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Tests enforcement of release branch authorization gate when requirement is not met.",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "cec4041a430cc11a07733085934f8ec3c2830b5ef93bd04a811fb9634dbf21f2",
+              "scenarioId": "H06",
+              "baselineHash": "1fad51a800cb2f516dad179f8b796b78a555efc4051268d82fcb8783317837ba",
+              "interventionHash": "31fc5e9e2a15cb2d88034a6990978f6028984972c1ea1f68e62b9e31d392d89c",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h06-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h06-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h06-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h06-requirement",
+                "h06-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:39.782Z"
+            }
+          },
+          {
+            "intervention": {
+              "id": "baseten-h06-signature",
+              "targetConditionId": "h06-signature",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Tests enforcement of artifact signature gate when signature is invalid.",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "882bd43a641dbb610d9cd341f28546c2b5d18f77e331648af17550259445a0ed",
+              "scenarioId": "H06",
+              "baselineHash": "1fad51a800cb2f516dad179f8b796b78a555efc4051268d82fcb8783317837ba",
+              "interventionHash": "71a112c1536a317c3770ee9095ce160224fb08a75ae115292f19b7a3363e944c",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h06-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h06-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h06-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h06-signature",
+                "h06-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:39.783Z"
+            }
+          }
+        ],
+        "comparison": null
+      }
+    },
+    {
+      "caseId": "H07",
+      "task": "baseten",
+      "reference": {
+        "outcome": "INDETERMINATE",
+        "repair": null,
+        "basis": "Required review evidence is unavailable; the signature change cannot settle policy compliance."
+      },
+      "latencyMs": 2312,
+      "outcome": "INDETERMINATE",
+      "targetMatched": true,
+      "outcomeCorrect": true,
+      "repairVerified": null,
+      "extractionCorrect": null,
+      "response": {
+        "challenger": {
+          "candidates": [
+            {
+              "conditionId": "h07-signature",
+              "replacementValue": false,
+              "reason": "Proposes flipping artifact signature to false to test handling of unsigned artifact under policy h07-policy."
+            }
+          ],
+          "provider": "Baseten",
+          "modelId": "meta-models/muse-spark-open-1026",
+          "responseId": "chatcmpl-78e22c48a10642b493b651ff06170d46",
+          "usage": {
+            "inputTokens": 291,
+            "outputTokens": 572
+          },
+          "accountingStatus": "PROVIDER_USAGE",
+          "telemetry": {
+            "latencyMs": 2271,
+            "reservedMicroUsd": 9094,
+            "estimatedActualMicroUsd": 2795,
+            "providerChargeUsd": null
+          }
+        },
+        "experiments": [
+          {
+            "intervention": {
+              "id": "baseten-h07-signature",
+              "targetConditionId": "h07-signature",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Proposes flipping artifact signature to false to test handling of unsigned artifact under policy h07-policy.",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "63dd1dbb62df1b016adf765a68a567a9869d2f6dc8c19f6c228d2ec1658675f8",
+              "scenarioId": "H07",
+              "baselineHash": "c465b23b9cc978a2ee081beec203c45514cf018df2abf15c8f528905c1960b33",
+              "interventionHash": "341a72d97edbb207acc457fefcadd047f4f42b212120acc40134a406555360a5",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h07-execute",
+                  "eligibility": "SATISFIED",
+                  "executes": true
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h07-policy",
+                  "state": "UNKNOWN"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h07-execute",
+                  "status": "EXECUTED",
+                  "reason": "Execution gates and dependencies satisfied"
+                }
+              ],
+              "affectedNodeIds": [
+                "h07-signature"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [
+                "h07-requirement"
+              ],
+              "outcome": "INDETERMINATE",
+              "timestamp": "2026-10-30T07:51:42.106Z"
+            }
+          }
+        ],
+        "comparison": null
+      }
+    },
+    {
+      "caseId": "H08",
+      "task": "baseten",
+      "reference": {
+        "outcome": "SAFE_EXECUTION",
+        "repair": null,
+        "basis": "Changing the optional signature does not violate the test policy or its gate."
+      },
+      "latencyMs": 3175,
+      "outcome": "SAFE_EXECUTION",
+      "targetMatched": true,
+      "outcomeCorrect": true,
+      "repairVerified": null,
+      "extractionCorrect": null,
+      "response": {
+        "challenger": {
+          "candidates": [
+            {
+              "conditionId": "h08-requirement",
+              "replacementValue": false,
+              "reason": "Flipping test completion to false would cause the execution gate h08-requirement to block h08-execute, preventing the workflow from proceeding under its validated policy."
+            },
+            {
+              "conditionId": "h08-signature",
+              "replacementValue": false,
+              "reason": "Flipping artifact signature to false would introduce a failing condition that does not satisfy the current policy but would be evaluated as an additional check if added to required conditions."
+            }
+          ],
+          "provider": "Baseten",
+          "modelId": "meta-models/muse-spark-open-1026",
+          "responseId": "chatcmpl-755dafed533042ecaf147546dc76dc4b",
+          "usage": {
+            "inputTokens": 315,
+            "outputTokens": 651
+          },
+          "accountingStatus": "PROVIDER_USAGE",
+          "telemetry": {
+            "latencyMs": 3131,
+            "reservedMicroUsd": 9137,
+            "estimatedActualMicroUsd": 3161,
+            "providerChargeUsd": null
+          }
+        },
+        "experiments": [
+          {
+            "intervention": {
+              "id": "baseten-h08-requirement",
+              "targetConditionId": "h08-requirement",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Flipping test completion to false would cause the execution gate h08-requirement to block h08-execute, preventing the workflow from proceeding under its validated policy.",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "0c37e35fe760257cfd4eeda75ceb6ec526b9b155ceb6a03682ff86cbdce3ab21",
+              "scenarioId": "H08",
+              "baselineHash": "0ce24d0fd2b624badcbb70daa53dbd1487fde7ef5d3de4faa5cacd551a30a44e",
+              "interventionHash": "188fef54ca154aabf88be377b3e83192dbba05fbb6ebba511112f7109adb0464",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h08-execute",
+                  "eligibility": "VIOLATED",
+                  "executes": false
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h08-policy",
+                  "state": "VIOLATED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h08-execute",
+                  "status": "BLOCKED",
+                  "reason": "Execution gate violated"
+                }
+              ],
+              "affectedNodeIds": [
+                "h08-requirement",
+                "h08-execute"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_BLOCK",
+              "timestamp": "2026-10-30T07:51:45.280Z"
+            }
+          },
+          {
+            "intervention": {
+              "id": "baseten-h08-signature",
+              "targetConditionId": "h08-signature",
+              "originalValue": true,
+              "replacementValue": false,
+              "reason": "Flipping artifact signature to false would introduce a failing condition that does not satisfy the current policy but would be evaluated as an additional check if added to required conditions.",
+              "proposedBy": "OPEN_WEIGHT",
+              "validated": true
+            },
+            "result": {
+              "id": "8b94c65fb72e462b16a525a0526e9bdd827d580019741f40e762fe866a5dfbb6",
+              "scenarioId": "H08",
+              "baselineHash": "0ce24d0fd2b624badcbb70daa53dbd1487fde7ef5d3de4faa5cacd551a30a44e",
+              "interventionHash": "59501c3819af0b6f2095cacd624abecf8ff03cb0a01ae446a6eb6a9876e5aebf",
+              "evaluatorVersion": "1.0.0",
+              "stepResults": [
+                {
+                  "stepId": "h08-execute",
+                  "eligibility": "SATISFIED",
+                  "executes": true
+                }
+              ],
+              "policyResults": [
+                {
+                  "ruleId": "h08-policy",
+                  "state": "SATISFIED"
+                }
+              ],
+              "executionTrace": [
+                {
+                  "sequence": 0,
+                  "stepId": "h08-execute",
+                  "status": "EXECUTED",
+                  "reason": "Execution gates and dependencies satisfied"
+                }
+              ],
+              "affectedNodeIds": [
+                "h08-signature"
+              ],
+              "firstViolation": null,
+              "unknownConditions": [],
+              "outcome": "SAFE_EXECUTION",
+              "timestamp": "2026-10-30T07:51:45.281Z"
+            }
+          }
+        ],
+        "comparison": null
+      }
+    }
+  ]
+}

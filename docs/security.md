@@ -1,9 +1,9 @@
-# Security
+# Security and spending controls
 
-User workflow text is untrusted. The Worker does not execute code from it. Model tool names and arguments are validated before the simulator runs. Meta credentials remain server-side in `.dev.vars` locally and Cloudflare secrets in deployment. The local secrets file is ignored by Git. The API caps request size and restricts CORS to `ALLOWED_ORIGIN`.
+Workflow text is untrusted data. Minsk does not execute it. Provider tool names and arguments are validated before the deterministic simulator runs, and model hypotheses never determine an execution outcome. API request bodies are capped, origins must exactly match `ALLOWED_ORIGIN`, and provider keys stay in ignored local secret files or Cloudflare secrets.
 
-The spending guard reserves estimated usage in a persistent Durable Object before each model call. It enforces a $100 internal ceiling, daily and per-client model allowances, and a single active investigation. Every HTTP route has a global and per-client request limit, including requests without an Origin header. The browser session header is not used as an identity. Provider timeouts are bounded at 30 seconds. A production kill switch disables live model calls by default.
+The persistent Durable Object reserves a conservative estimate before every provider dispatch, then stores reported token usage, latency and classified provider errors when available. Missing usage remains conservatively reserved. Meta has a configurable application estimate ceiling that defaults to $50. Baseten is uncapped by application dollars per owner policy, but remains metered and protected by its kill switch, rate limits, bounded output, timeout, validation and global dispatch controls. These controls are not provider billing hard limits.
 
-The ledger distinguishes reserved calls, calls with provider usage, and calls with unknown usage. Unknown usage remains conservatively accounted against the ceiling. Operators must reconcile the estimate against Meta Billing. The ledger does not establish the provider's actual charge or remaining promotional credit balance. Public live inference remains disabled pending reconciliation and controlled deployment verification.
+Model endpoints require explicit server-side switches. The controlled benchmark route additionally requires a private evaluation token. Browser users never receive provider credentials. A single investigation lock prevents overlapping tool investigations, while request limits apply even without an Origin header.
 
-The full dependency audit runs in CI. Vitest was upgraded to remove the vulnerable `tinypool@1.1.1` dependency. A local full audit passed on October 27, 2026.
+Certificate integrity proves that the canonical certificate content has not changed. It does not prove issuer identity. Operators must reconcile estimates with provider billing and should disable model switches immediately when a provider or accounting anomaly is observed.
