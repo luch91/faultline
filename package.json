@@ -9,6 +9,8 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "benchmark": "pnpm --filter @minsk/simulator benchmark",
+    "verify:certificate": "tsx scripts/verify-certificate.ts",
+    "model:evaluate": "tsx scripts/model-evaluation.ts",
     "e2e": "playwright test",
     "lint": "pnpm -r lint",
     "check:content": "node scripts/check-content.mjs",
@@ -19,6 +21,7 @@
     "@eslint/js": "^9.38.0",
     "@playwright/test": "^1.64.1",
     "eslint": "^9.38.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.0"
   }

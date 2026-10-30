@@ -44,7 +44,7 @@ Use Node 22 and pnpm 10. Run `pnpm install --frozen-lockfile` in the repository 
 
 ## Commands
 
-`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm benchmark`, `pnpm build`, `pnpm e2e`, `pnpm audit --audit-level high`, `pnpm check:content`, `pnpm check:secrets`. `pnpm benchmark` runs offline and writes JSON results in `benchmark/results`. Playwright E2E starts a local Worker and frontend without Meta inference.
+`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm benchmark`, `pnpm build`, `pnpm e2e`, `pnpm audit --audit-level high`, `pnpm check:content`, `pnpm check:secrets`. `pnpm benchmark` runs offline, includes a separate reference oracle, and writes JSON results in `benchmark/results`. `pnpm verify:certificate <certificate.json> [original-workflow.json]` independently checks an export. `pnpm model:evaluate` prints a call-free evaluation plan. Playwright E2E starts a local Worker and frontend without Meta inference.
 
 Set `MINSK_STAGING_URL` to a verified preview URL to run the browser journey against staging without starting local servers.
 

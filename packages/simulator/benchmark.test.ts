@@ -12,6 +12,9 @@ const cases=readdirSync(resolve(root,'cases')).filter(name=>/^MFB-\d\d\.json$/.t
 describe('Minsk Failure Benchmark',()=>{
   it('matches locked independent expectations and writes a reproducible report',async()=>{
     expect(cases).toHaveLength(12);
+    execFileSync(process.execPath,[resolve(root,'reference-oracle.mjs')],{cwd:root});
+    const reference=JSON.parse(readFileSync(resolve(root,'results','reference-latest.json'),'utf8')) as {total:number;agreed:number;disagreed:number};
+    expect(reference).toMatchObject({total:12,agreed:12,disagreed:0});
     const rows=[];
     for(const file of cases){
       const item=JSON.parse(readFileSync(resolve(root,'cases',file),'utf8')) as BenchmarkCase;
@@ -38,7 +41,7 @@ describe('Minsk Failure Benchmark',()=>{
     const negatives=rows.filter(row=>row.negativeControl);
     const detectionRecall=positives.filter(row=>row.counterfactual==='UNSAFE_EXECUTION').length/positives.length;
     const falsePositives=negatives.filter(row=>row.counterfactual==='UNSAFE_EXECUTION').length;
-    const report={benchmark:'Minsk Failure Benchmark',benchmarkVersion:'1',evaluatorVersion:EVALUATOR_VERSION,commit:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),fixtureHash:await hash(cases.map(file=>readFileSync(resolve(root,'cases',file),'utf8'))),total:rows.length,passed:rows.filter(row=>row.passed).length,failed:rows.filter(row=>!row.passed).length,unsupported:0,indeterminate:rows.filter(row=>row.counterfactual==='INDETERMINATE').length,detectionRecall,falsePositives,verifiedSafeguards:rows.filter(row=>row.safeguardVerified).length,rows};
+    const report={benchmark:'Minsk Failure Benchmark',benchmarkVersion:'1',evaluatorVersion:EVALUATOR_VERSION,commit:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),fixtureHash:await hash(cases.map(file=>readFileSync(resolve(root,'cases',file),'utf8'))),total:rows.length,passed:rows.filter(row=>row.passed).length,failed:rows.filter(row=>!row.passed).length,unsupported:0,indeterminate:rows.filter(row=>row.counterfactual==='INDETERMINATE').length,detectionRecall,falsePositives,verifiedSafeguards:rows.filter(row=>row.safeguardVerified).length,independentGroundTruthAgreement:reference.agreed,rows};
     const results=resolve(root,'results');mkdirSync(results,{recursive:true});writeFileSync(resolve(results,'latest.json'),JSON.stringify(report,null,2)+'\n');
     process.stdout.write(`MFB: ${report.passed}/${report.total} cases, ${report.verifiedSafeguards} verified repairs, ${falsePositives} false positives, ${report.indeterminate} indeterminate\n`);
     expect(report.failed,JSON.stringify(rows.filter(row=>!row.passed))).toBe(0);
