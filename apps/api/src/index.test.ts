@@ -48,7 +48,9 @@ describe('deterministic HTTP flow',()=>{
   it('serves the sample and evaluates a counterfactual without model transport',async()=>{
     const sample=await api.fetch(new Request('http://localhost/api/v1/samples'),env);
     expect(sample.status).toBe(200);
-    expect((await sample.json() as {samples:Array<{id:string}>}).samples[0]?.id).toBe('missing-approval');
+    const samples=(await sample.json() as {samples:Array<{id:string}>}).samples;
+    expect(samples[0]?.id).toBe('missing-approval');
+    expect(samples.map(item=>item.id)).toContain('mfb-09');
     const baseline=await post('/api/v1/experiments/run',{workflow:missingApproval});
     expect(baseline.status).toBe(200);
     expect(await baseline.json()).toMatchObject({kind:'BASELINE',result:{outcome:'SAFE_EXECUTION'}});
@@ -66,6 +68,16 @@ describe('deterministic HTTP flow',()=>{
     expect(certificate.evaluationResult.outcome).toBe('UNSAFE_EXECUTION');
     expect(certificate.verificationResult.outcome).toBe('SAFE_BLOCK');
     expect(certificate.integrityHash).toMatch(/^[a-f0-9]{64}$/);
+    const checked=await post('/api/v1/reports/verify',{certificate,workflow:missingApproval});
+    expect(checked.status).toBe(200);
+    expect(await checked.json()).toMatchObject({valid:true,inputVerified:true,provenanceAuthenticity:'NOT_VERIFIED'});
+    const changed=await post('/api/v1/reports/verify',{certificate:{...certificate,integrityHash:'0'.repeat(64)},workflow:missingApproval});
+    expect(await changed.json()).toMatchObject({valid:false});
+  });
+  it('labels historical synthetic model evidence',async()=>{
+    const response=await api.fetch(new Request('http://localhost/api/v1/evaluation/history'),env);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({distinctCases:8,tasks:48,dispatches:60});
   });
   it('rejects a cross-origin request',async()=>{
     const response=await api.fetch(new Request('http://localhost/api/v1/samples',{headers:{Origin:'https://other.example'}}),env);
@@ -125,6 +137,11 @@ describe('deterministic HTTP flow',()=>{
     expect(extraction.status).toBe(503);
     const budget=await api.fetch(new Request('http://localhost/api/v1/budget'),env);
     expect(await budget.json()).toMatchObject({liveModelEnabled:false});
+  });
+  it('does not advertise public inference from provider switches alone',async()=>{
+    const configured={...env,MODEL_CALLS_ENABLED:'true',META_CREDITS_CONFIRMED:'true',META_BILLING_MODE:'Standard',MODEL_API_KEY:'test-key'} as Parameters<typeof api.fetch>[1];
+    const budget=await api.fetch(new Request('http://localhost/api/v1/budget'),configured);
+    expect(await budget.json()).toMatchObject({liveModelEnabled:false,configuration:{publicBudgetConfigured:false}});
   });
   it('keeps the open-weight challenger disabled without separate credentials and switch',async()=>{
     const response=await post('/api/v1/challengers/open-weight',{workflow:missingApproval});

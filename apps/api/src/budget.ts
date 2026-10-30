@@ -11,6 +11,10 @@ export function evaluationAdmission(count:number,costMicroUsd:number,estimatedMi
   if(!Number.isFinite(estimatedMicroUsd)||estimatedMicroUsd<=0||costMicroUsd+estimatedMicroUsd>ceilingMicroUsd)return {allowed:false,reason:'Evaluation estimate ceiling reached'};
   return {allowed:true};
 }
+export function publicJudgeAdmission(count:number,costMicroUsd:number,estimatedMicroUsd:number,limit:number,ceilingMicroUsd:number){
+  if(!Number.isInteger(limit)||limit<1||limit>100||!Number.isInteger(ceilingMicroUsd)||ceilingMicroUsd<1||ceilingMicroUsd>10_000_000)return {allowed:false,reason:'Public inference budget is not configured'};
+  return evaluationAdmission(count,costMicroUsd,estimatedMicroUsd,limit,ceilingMicroUsd);
+}
 export type ModelCallAttestation={modelId:ModelId;role:string;responseId:string|null;toolCallId:string;toolArgumentsJson?:string;toolResultJson?:string;inputTokens:number;outputTokens:number;accountingStatus:'PROVIDER_USAGE'|'UNKNOWN_USAGE';routingReason:string};
 export type InvestigationAttestation={graphHash:string;interventionHash:string;stepId:string|null;conditionId:string|null;responseIds:string[];toolCallIds:string[];inputTokens:number;outputTokens:number;verificationOutcome:string|null;calls?:ModelCallAttestation[]};
 export type BillingProvider='Meta'|'Baseten';
@@ -27,7 +31,7 @@ export class BudgetLedger extends DurableObject {
     this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS investigation_lock (id INTEGER PRIMARY KEY CHECK (id=1), started INTEGER NOT NULL)');
   }
   admit(client:string):{allowed:boolean;reason?:string}{
-    this.initialize();const minute=new Date().toISOString().slice(0,16);for(const [key,limit] of [[`global:${minute}`,300],[`client:${client}:${minute}`,30]] as const){const count=this.ctx.storage.sql.exec<{count:number}>('SELECT count FROM request_counts WHERE key=?',key).toArray()[0]?.count??0;if(count>=limit)return {allowed:false,reason:'Request rate limit exceeded'};}
+    this.initialize();const minute=new Date().toISOString().slice(0,16);for(const [key,limit] of [[`global:${minute}`,300],[`client:${client}:${minute}`,60]] as const){const count=this.ctx.storage.sql.exec<{count:number}>('SELECT count FROM request_counts WHERE key=?',key).toArray()[0]?.count??0;if(count>=limit)return {allowed:false,reason:'Request rate limit exceeded'};}
     for(const key of [`global:${minute}`,`client:${client}:${minute}`])this.ctx.storage.sql.exec('INSERT INTO request_counts (key,count) VALUES (?,1) ON CONFLICT(key) DO UPDATE SET count=count+1',key);
     this.ctx.storage.sql.exec('DELETE FROM request_counts WHERE key NOT LIKE ?',`%${minute}`);
     return {allowed:true};
@@ -36,13 +40,22 @@ export class BudgetLedger extends DurableObject {
   releaseInvestigation():void{this.initialize();this.ctx.storage.sql.exec('DELETE FROM investigation_lock WHERE id=1');}
   reserve(id:string,client:string,estimatedMicroUsd:number,kind:'text'|'image',model:ModelId|'meta-models/muse-spark-open-1026'='muse-spark-1.3',provider:BillingProvider='Meta'): {allowed:boolean;reason?:string} {
     this.initialize();
+    const day=new Date().toISOString().slice(0,10);
+    if(client.startsWith('judge:')){
+      const settings=this.env as {PUBLIC_JUDGE_MAX_CALLS?:string;PUBLIC_JUDGE_MAX_MICRO_USD?:string};
+      const used=this.ctx.storage.sql.exec<{count:number;cost:number}>('SELECT COUNT(*) AS count,COALESCE(SUM(MAX(COALESCE(actual,0),reserved)),0) AS cost FROM calls WHERE session LIKE ?', 'judge:%').one();
+      const admission=publicJudgeAdmission(used.count,used.cost,estimatedMicroUsd,Number(settings.PUBLIC_JUDGE_MAX_CALLS??0),Number(settings.PUBLIC_JUDGE_MAX_MICRO_USD??0));
+      if(!admission.allowed)return admission;
+      const ip=client.slice(6,client.lastIndexOf(':'));
+      const ipCalls=this.ctx.storage.sql.exec<{count:number}>('SELECT COUNT(*) AS count FROM calls WHERE session LIKE ? AND day=?',`judge:${ip}:%`,day).one().count;
+      if(ipCalls>=10)return {allowed:false,reason:'Public client inference allowance reached'};
+    }
     if(client==='eval:controlled'){
       const used=this.ctx.storage.sql.exec<{count:number;cost:number}>('SELECT COUNT(*) AS count,COALESCE(SUM(MAX(COALESCE(actual,0),reserved)),0) AS cost FROM calls WHERE session=?',client).one();
       const settings=this.env as {MINSK_EVAL_MAX_CALLS?:string;MINSK_EVAL_MAX_MICRO_USD?:string};
       const admission=evaluationAdmission(used.count,used.cost,estimatedMicroUsd,settings.MINSK_EVAL_MAX_CALLS?Number(settings.MINSK_EVAL_MAX_CALLS):6,settings.MINSK_EVAL_MAX_MICRO_USD?Number(settings.MINSK_EVAL_MAX_MICRO_USD):300_000);
       if(!admission.allowed)return admission;
     }
-    const day=new Date().toISOString().slice(0,10);
     const total=this.ctx.storage.sql.exec<{value:number}>('SELECT COALESCE(SUM(COALESCE(actual,reserved)),0) AS value FROM calls WHERE provider=?',provider).one().value;
     const daily=this.ctx.storage.sql.exec<{value:number}>('SELECT COUNT(*) AS value FROM calls WHERE day=?',day).one().value;
     const perClient=this.ctx.storage.sql.exec<{value:number}>('SELECT COUNT(*) AS value FROM calls WHERE session=? AND day=? AND provider=?',client,day,provider).one().value;

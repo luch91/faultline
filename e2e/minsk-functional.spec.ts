@@ -14,6 +14,7 @@ test('sample, counterfactual, safeguard, replay, certificate, and benchmark', as
   await expect(page.getByLabel('Safeguard outcome')).toHaveText('SAFE_BLOCK');
   await expect(page.getByText('Verified: true')).toBeVisible();
 
+  await page.getByRole('button', { name: 'Evidence', exact: true }).click();
   await page.getByRole('button', { name: 'BASELINE' }).click();
   await expect(page.getByLabel('Evaluation outcome')).toHaveText('SAFE_EXECUTION');
   await page.getByRole('button', { name: 'COUNTERFACTUAL', exact: true }).click();
@@ -33,9 +34,23 @@ test('sample, counterfactual, safeguard, replay, certificate, and benchmark', as
   expect(certificate.modelMetadata).toBeNull();
   expect(certificate.integrityHash).toMatch(/^[a-f0-9]{64}$/);
   await expect(page.getByText('Exported certificate')).toBeVisible();
+  await page.getByRole('button', { name: 'Verify certificate' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Integrity valid' })).toContainText('original input matched');
 
+  await page.getByRole('button', { name: 'Evaluation', exact: true }).click();
   await page.getByRole('button', { name: 'Run 12 deterministic cases' }).click();
   await expect(page.getByLabel('Benchmark results')).toContainText('MFB-12');
+});
+
+test('sample selection and unknown evidence remain usable on mobile and desktop', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Sample workflow').selectOption('mfb-09');
+  await expect(page.getByLabel('Baseline outcome')).toHaveText('INDETERMINATE');
+  await expect(page.locator('body')).not.toHaveJSProperty('scrollWidth', 0);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+  expect(overflow).toBe(false);
+  await page.getByRole('button', { name: 'Evidence', exact: true }).click();
+  await expect(page.getByText('Original source')).toBeVisible();
 });
 
 test('API failure is reported as an error', async ({ page }) => {
