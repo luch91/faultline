@@ -39,24 +39,33 @@ for(const spec of heldoutSpecs){
   if(provider!=='baseten'){
     tasks.push({name:'spark-extraction',path:'/api/v1/workflows/extract',body:{text}});
     for(const modelId of ['muse-spark-1.3','muse-wonder-1.0'])tasks.push({name:modelId,path:'/api/v1/evaluation/investigate',body:{workflow,modelId,targetConditionId:targetId}});
+    tasks.push({name:'spark-model-only',path:'/api/v1/evaluation/model-only',body:{workflow,modelId:'muse-spark-1.3'}});
   }
   if(provider!=='meta')tasks.push({name:'baseten',path:'/api/v1/challengers/open-weight',body:{workflow}});
   for(const task of tasks){
     if(rows.some(row=>row.caseId===spec.id&&row.task===task.name))continue;
     try{
       const {data,latencyMs}=await call(task.path,task.body);
-      let outcome:string|null=null;let targetMatched:boolean|null=null;let repairVerified:boolean|null=null;let extractionCorrect:boolean|null=null;
+      let outcome:string|null=null;let targetMatched:boolean|null=null;let repairVerified:boolean|null=null;let extractionCorrect:boolean|null=null;let providerTelemetry:unknown=null;let inputTokens:number|null=null;let outputTokens:number|null=null;
       if(task.name==='spark-extraction'){
         const main=data.workflow.conditions.find((item:any)=>item.name.toLowerCase().includes(spec.requirement.toLowerCase()));
         extractionCorrect=!!main&&main.observedValue===spec.mainObserved&&data.workflow.policyRules.some((rule:any)=>rule.requiredConditionIds.includes(main.id))&&data.workflow.steps.some((step:any)=>step.executionGateIds.includes(main.id))===spec.mainGate;
+        providerTelemetry=data.model?.telemetry??null;inputTokens=data.model?.usage?.input_tokens??null;outputTokens=data.model?.usage?.output_tokens??null;
       }else if(task.name==='baseten'){
         const selected=data.experiments.find((item:any)=>item.intervention.targetConditionId===targetId&&item.intervention.replacementValue===false);
         targetMatched=!!selected;outcome=selected?.result.outcome??null;
         if(selected&&reference.repair)repairVerified=(await verifySafeguard(workflow,selected.intervention,workflow.steps[0].id,targetId)).resolved;
+        providerTelemetry=data.challenger?.telemetry??null;inputTokens=data.challenger?.usage?.inputTokens??null;outputTokens=data.challenger?.usage?.outputTokens??null;
+      }else if(task.name==='spark-model-only'){
+        const prediction=JSON.parse(data.output);
+        targetMatched=prediction.conditionId===targetId;
+        outcome=prediction.predictedOutcome??null;
+        providerTelemetry=data.telemetry??null;inputTokens=data.usage?.input_tokens??null;outputTokens=data.usage?.output_tokens??null;
       }else{
         targetMatched=data.intervention?.targetConditionId===targetId;outcome=data.failure?.outcome??null;repairVerified=data.verification?.resolved??null;
+        const calls=Array.isArray(data.model?.telemetry)?data.model.telemetry:[];providerTelemetry=calls;inputTokens=(data.model?.usage?.first?.input_tokens??0)+(data.model?.usage?.second?.input_tokens??0)||null;outputTokens=(data.model?.usage?.first?.output_tokens??0)+(data.model?.usage?.second?.output_tokens??0)||null;
       }
-      rows.push({caseId:spec.id,task:task.name,reference,latencyMs,outcome,targetMatched,outcomeCorrect:outcome===null?null:outcome===reference.outcome,repairVerified,extractionCorrect,response:data});
+      rows.push({caseId:spec.id,task:task.name,reference,latencyMs,providerTelemetry,inputTokens,outputTokens,retries:0,fallbacks:data.routing?.modelId==='muse-spark-1.3'&&String(data.routing?.reason??'').includes('fallback')?1:0,outcome,targetMatched,outcomeCorrect:outcome===null?null:outcome===reference.outcome,repairVerified,extractionCorrect,response:data});
       process.stdout.write(`${spec.id} ${task.name}: ${outcome??String(extractionCorrect)}\n`);
     }catch(error){const message=error instanceof Error?error.message:String(error);rows.push({caseId:spec.id,task:task.name,reference,error:message});process.stderr.write(`${spec.id} ${task.name}: ${message}\n`);if(/HTTP (402|429)/.test(message))stopped=true;}
     await persist({before,status:stopped?'STOPPED':'RUNNING'});
@@ -71,7 +80,7 @@ const groups=Object.fromEntries([...new Set(rows.map(row=>String(row.task)))].ma
   const classified=group.filter(row=>typeof row.outcome==='string');
   const positive=classified.filter(row=>(row.reference as {outcome:string}).outcome==='UNSAFE_EXECUTION');
   const negative=classified.filter(row=>(row.reference as {outcome:string}).outcome!=='UNSAFE_EXECUTION');
-  return [task,{tasks:group.length,errors:group.filter(row=>!!row.error).length,extractionCorrect:group.filter(row=>row.extractionCorrect===true).length,outcomeCorrect:group.filter(row=>row.outcomeCorrect===true).length,truePositive:positive.filter(row=>row.outcome==='UNSAFE_EXECUTION').length,falseNegative:positive.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,falsePositive:negative.filter(row=>row.outcome==='UNSAFE_EXECUTION').length,trueNegative:negative.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,unknownCorrect:group.filter(row=>(row.reference as {outcome:string}).outcome==='INDETERMINATE'&&row.outcome==='INDETERMINATE').length,verifiedRepairs:group.filter(row=>row.repairVerified===true).length}];
+  return [task,{tasks:group.length,errors:group.filter(row=>!!row.error).length,providerDispatches:group.reduce((sum,row)=>sum+(Array.isArray(row.providerTelemetry)?row.providerTelemetry.length:row.providerTelemetry?1:0),0),endToEndLatencyMs:group.reduce((sum,row)=>sum+Number(row.latencyMs??0),0),inputTokens:group.reduce((sum,row)=>sum+Number(row.inputTokens??0),0),outputTokens:group.reduce((sum,row)=>sum+Number(row.outputTokens??0),0),retries:group.reduce((sum,row)=>sum+Number(row.retries??0),0),fallbacks:group.reduce((sum,row)=>sum+Number(row.fallbacks??0),0),extractionCorrect:group.filter(row=>row.extractionCorrect===true).length,outcomeCorrect:group.filter(row=>row.outcomeCorrect===true).length,truePositive:positive.filter(row=>row.outcome==='UNSAFE_EXECUTION').length,falseNegative:positive.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,falsePositive:negative.filter(row=>row.outcome==='UNSAFE_EXECUTION').length,trueNegative:negative.filter(row=>row.outcome!=='UNSAFE_EXECUTION').length,unknownCorrect:group.filter(row=>(row.reference as {outcome:string}).outcome==='INDETERMINATE'&&row.outcome==='INDETERMINATE').length,verifiedRepairs:group.filter(row=>row.repairVerified===true).length}];
 }));
 await persist({before,after,groups,status:stopped?'STOPPED':'COMPLETED'});
 process.stdout.write(JSON.stringify(groups,null,2)+'\n');

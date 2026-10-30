@@ -20,7 +20,7 @@ describe('open-weight challenger boundary',()=>{
     try{
       const provider=new EligibleOpenWeightInvestigator('test-key',true,ledger as unknown as DurableObjectStub<BudgetLedger>,'client');
       await expect(provider.generateCandidates(missingApproval,{maxCandidates:3},new AbortController().signal)).rejects.toThrow('empty candidate content');
-      expect(ledger.settle).toHaveBeenCalledWith(expect.any(String),338,100,50);
+      expect(ledger.settle).toHaveBeenCalledWith(expect.any(String),338,100,50,expect.any(Number));
     }finally{globalThis.fetch=original;}
   });
   it('uses an explicit provider model and a separate conservative estimate',()=>{
@@ -44,7 +44,7 @@ describe('open-weight challenger boundary',()=>{
       expect(result.responseId).toBe('baseten-response');
       expect(result.accountingStatus).toBe('PROVIDER_USAGE');
       expect(ledger.reserve).toHaveBeenCalledWith(expect.any(String),'client',expect.any(Number),'text',BASETEN_MODEL,'Baseten');
-      expect(ledger.settle).toHaveBeenCalledWith(expect.any(String),338,100,50);
+      expect(ledger.settle).toHaveBeenCalledWith(expect.any(String),338,100,50,expect.any(Number));
     }finally{globalThis.fetch=original;}
   });
 });
